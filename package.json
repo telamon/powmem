@@ -1,0 +1,24 @@
+{
+  "name": "pop0101",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "ASL decoder and key-generator",
+  "main": "index.js",
+  "repository": "https://github.com/telamon/pop0101.git",
+  "author": "telamon",
+  "license": "AGPL-3.0-or-later",
+  "private": false,
+  "scripts": {
+    "test": "node test.js",
+    "debug": "node inspect test.js",
+    "lint": "standard --fix",
+    "prepublishOnly": "standard && npm test && node build.js"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.0.0"
+  },
+  "devDependencies": {
+    "standard": "^17.0.0",
+    "tapzero": "^0.6.1"
+  }
+}
