@@ -1,10 +1,10 @@
 {
-  "name": "pop0101",
+  "name": "powmem-asl",
   "type": "module",
   "version": "1.0.0",
   "description": "ASL decoder and key-generator",
   "main": "index.js",
-  "repository": "https://github.com/telamon/pop0101.git",
+  "repository": "https://github.com/telamon/powmem-asl.git",
   "author": "telamon",
   "license": "AGPL-3.0-or-later",
   "private": false,
@@ -12,12 +12,18 @@
     "test": "node test.js",
     "debug": "node inspect test.js",
     "lint": "standard --fix",
+    "build": "esbuild --bundle index.js --format=esm --outfile=dist/index.esm.js",
+    "demo": "esbuild --bundle demo.js --format=esm --outfile=dist/demo.js --servedir=dist/",
     "prepublishOnly": "standard && npm test && node build.js"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@noble/curves": "^1.0.0"
   },
   "devDependencies": {
+    "@noble/curves": "^1.0.0",
+    "esbuild": "^0.17.19",
+    "latlon-geohash": "^2.0.0",
+    "nostr-tools": "^1.10.1",
     "standard": "^17.0.0",
     "tapzero": "^0.6.1"
   }

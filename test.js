@@ -7,6 +7,16 @@ import {
   unpackGeo
 } from './index.js'
 
+import Geohash from 'latlon-geohash'
+
+const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
+
+const { age, sex, location } = decodeASL(npub)
+
+console.log('Age', [16, 24, 32, 42][age])
+console.log('Sex', ['Sheman', 'Heman', 'Noman', 'Mecha'][sex])
+console.log('Location', Geohash.decode(location, 3))
+
 test('Decode ASL', async t => {
   const secret = '9ec11fa81c53e7115b014a373a4b66172e4f476091a57b20be1103e935738f9c'
   const { age, sex, location } = decodeASL(schnorr.getPublicKey(secret))

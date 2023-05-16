@@ -10,7 +10,7 @@ import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
 const GHM = '0123456789bcdefghjkmnpqrstuvwxyz' // (geohash-specific) Base32 map
 const GHU = GHM.split('').reduce((h, l, i) => { h[l] = i; return h }, {})
 
-const SANE_DEFAULT = 15 // Somewhat sane
+export const SANE_DEFAULT = 15 // Somewhat sane
 
 /**
  * Rolls keypairs until a matching public-key is found
@@ -33,9 +33,9 @@ export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500
     ? (1 << (nbits % 8)) - 1
     : 0xff
   console.info('Searching for', nbits, binstr(prefix), 'mask', mask.toString(2))
-  const max = 500000 // ~10second on my laptop
+  // const max = 500000 // ~10second on my laptop
   const nBytes = prefix.length
-  for (let i = 0; i < max; i++) {
+  for (let i = 0; i < maxTries; i++) {
     const sk = schnorr.utils.randomPrivateKey()
     const pk = schnorr.getPublicKey(sk)
     let v = true
