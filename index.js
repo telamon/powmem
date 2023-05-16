@@ -1,25 +1,70 @@
-/** @typedef {0|1} bit */
+import { schnorr } from '@noble/curves/secp256k1'
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
+
+/**
+ * @typedef {0|1} bit
+ * @typedef {string} hexstring
+ * @typedef {{age: number, sex: number, location: string}} ASL
+ */
+
 const GHM = '0123456789bcdefghjkmnpqrstuvwxyz' // (geohash-specific) Base32 map
 const GHU = GHM.split('').reduce((h, l, i) => { h[l] = i; return h }, {})
 
-const SANE_DEFAULT = 16
+const SANE_DEFAULT = 15 // Somewhat sane
 
 /**
  * Rolls keypairs until a matching public-key is found
  * @param {0|1|2|3} age values: 0: 16+, 1: 24+; 2: 32+; 3: 40+
  * @param {0|1|2|3} sex values: 0: Female, 1: Male, 2: Nonbinary, 3: Bot
  * @param {string} location a geohash
- * @returns {Uint8Array} secret key.
+ * @param {number} [geobits] geohash bit-size; default: 15
+ * @param {number} [maxTries] maximum number of rolls before giving up.
+ * @returns {Uint8Array?} secret key if found within maxTries, null otherwise
  */
-export function roll (age, sex, location) {
-
+export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500000) {
+  const nbits = geobits + 4
+  const buf = new Uint8Array(roundByte(nbits))
+  const prefix = packGeo(location, geobits, buf)
+  shift(prefix, sex & 0b10)
+  shift(prefix, sex & 1)
+  shift(prefix, age & 0b10)
+  shift(prefix, age & 1)
+  const mask = nbits % 8
+    ? (1 << (nbits % 8)) - 1
+    : 0xff
+  console.info('Searching for', nbits, binstr(prefix), 'mask', mask.toString(2))
+  const max = 500000 // ~10second on my laptop
+  const nBytes = prefix.length
+  for (let i = 0; i < max; i++) {
+    const sk = schnorr.utils.randomPrivateKey()
+    const pk = schnorr.getPublicKey(sk)
+    let v = true
+    for (let n = 0; v && n < nBytes; n++) {
+      v = (n + 1 === nBytes)
+        ? (pk[n] & mask) === (prefix[n] & mask)
+        : v = pk[n] === prefix[n]
+    }
+    if (v) {
+      console.log('PFX', binstr(prefix))
+      console.log('KEY', binstr(pk))
+      console.log('key found', bytesToHex(sk))
+      return bytesToHex(sk)
+    }
+  }
 }
 
 /**
  * Holistically decodes ASL from a public key
+ * @param {Uint8Array|hexstring} publicKey
+ * @param {number} geobits geohash bit-size; default: 15
+ * @returns {ASL}
  */
-export function decodeASL (publicKey) {
-
+export function decodeASL (publicKey, geobits = SANE_DEFAULT) {
+  if (typeof publicKey === 'string') publicKey = hexToBytes(publicKey)
+  const age = unshift(publicKey) | unshift(publicKey) << 1
+  const sex = unshift(publicKey) | unshift(publicKey) << 1
+  const location = unpackGeo(publicKey, geobits)
+  return { age, sex, location }
 }
 
 /**
@@ -44,26 +89,26 @@ export function unpackGeo (buf, nBits = SANE_DEFAULT) {
     }
   }
   str += GHM.charAt(tmp)
-  return str.replace(/0+$/, '') // Truncate trailing zero-fields
+  return str
 }
 
 /**
  * Bitpacks a geohash string containing quintets to arbitrary bit-precision
- *  'u120fw' <-- contains 6*5 bits accurate to ~1.2 Kilometers
- *
+ *  'u120fw' <-- contains 30bits accurate to ~1.2 Kilometers
  *  References:
  *  Format specification:  https://en.m.wikipedia.org/wiki/Geohash
  *  Bitdepthchart: https://www.ibm.com/docs/en/streams/4.3.0?topic=334-geoh
 ashes
  * @param {string} str A geohash string.
  * @param {number?} [nBits] precision in bits; default 12
+ * @param {Uint8Array|Buffer|Array} destination buffer
  * @returns {Uint8Array} buffer containing binary geohash
  */
-export function packGeo (str, nBits = SANE_DEFAULT) {
+export function packGeo (str, nBits = SANE_DEFAULT, buf = undefined) {
   if (!nBits) nBits = Math.min(str.length * 5, 12)
   if (nBits < 5) throw new Error('precision has to be at least 5')
   const nBytes = roundByte(nBits)
-  const buf = new Uint8Array(nBytes)
+  if (!buf) buf = new Uint8Array(nBytes)
   const val = str
     .split('')
     .reverse()
@@ -113,4 +158,17 @@ export function unshift (x, inp = 0) {
     c = nc
   }
   return c ? 1 : 0
+}
+
+function binstr (x, cap, bs = true) {
+  cap = cap || x.length * 8
+  let str = ''
+  for (let i = 0; i < x.length; i++) {
+    for (let j = 0; j < 8; j++) {
+      if (cap === i * 8 + j) str += '|'
+      str += x[i] & (1 << j) ? '1' : '0'
+    }
+    if (bs) str += ' '
+  }
+  return str
 }
