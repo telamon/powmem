@@ -1,10 +1,10 @@
 {
-  "name": "powmem-asl",
+  "name": "hwm-asl",
   "type": "module",
   "version": "1.0.0",
-  "description": "ASL decoder and key-generator",
+  "description": "POP-0101 implementation",
   "main": "index.js",
-  "repository": "https://github.com/telamon/powmem-asl.git",
+  "repository": "https://github.com/telamon/hwm-asl.git",
   "author": "telamon",
   "license": "AGPL-3.0-or-later",
   "private": false,
@@ -12,8 +12,8 @@
     "test": "node test.js",
     "debug": "node inspect test.js",
     "lint": "standard --fix",
-    "build": "esbuild --bundle index.js --format=esm --outfile=dist/index.esm.js",
-    "demo": "esbuild --bundle demo.js --format=esm --outfile=dist/demo.js --servedir=dist/",
+    "build": "esbuild --bundle index.js --format=esm --outfile=index.esm.js",
+    "demo": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js --servedir=docs/",
     "prepublishOnly": "standard && npm test && node build.js"
   },
   "peerDependencies": {

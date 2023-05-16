@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <title>HWM-ASL Keygen</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+  <main class="container">
+    <h1><code>POP-0101</code> Holistic Work Memory</h1>
+    <p>
+      This is a Schnorr key generator
+      that encodes ASL into the first 19-bits of your public key.<br/>
+      <sup>- Make PoW slightly less wasteful</sup>
+      <br/>
+      It enables a true decentralized approach to store
+      information about the author/keyholder.<br/>
+      One use-case is to holistically sort the hashspace
+      letting nodes attract other nodes with similar content.<br/>
+      <sup>- Form natural clusters</sup>
+      <br/>
+      Another use-case would be to decentralize nostr data
+      distribution by creating relays that appeal more to some audiences and less to others.<br/>
+      Relieving burden, deduplication and geographical latencies as the network grows.<br/>
+      <sup>- Decentralize phat relays</sup>
+    </p>
+    <form id="constraints">
+      <label for="age">Age</label>
+      <select id="age" name="age" required>
+        <option value="" selected>Ask your parents</option>
+        <option value="0">16+</option>
+        <option value="1">24+</option>
+        <option value="2">32+</option>
+        <option value="3">42+</option>
+      </select>
+
+      <label for="sex">Gender</label>
+      <select id="sex" name="sex" required>
+        <option value="" selected>Pick one</option>
+        <option value="0">Female</option>
+        <option value="1">Male</option>
+        <option value="2">Non-binary</option>
+        <option value="3">Robot</option>
+      </select>
+      <div class="grid">
+        <div>
+          <label for="latitude">Latitude</label>
+          <input type="number" id="lat" name="lat" step="0.0001"/>
+        </div>
+        <div>
+          <label for="longitude">Longitude</label>
+          <input type="number" id="lon" name="lon" step="0.0001"/>
+        </div>
+        <div>
+          <label for="btn-geo">Query your device for location</label>
+          <button id="btn-geo">Current Location</button>
+        </div>
+      </div>
+      <details>
+        <summary>Advanced options</summary>
+        <label for="bits">Accuracy (bits)</label>
+        <input id="bits" name="bits" type="number" min="5" max="20" value="15"/>
+      </details>
+      <button type="submit">Generate</button>
+    </form>
+    <section id="result">
+      Set your constraints and press Generate
+    </section>
+
+    <section>
+      <h2>How to</h2>
+      <h5>Install</h5>
+      <pre><code>$ npm i hwm-asl latlon-geohash geolib</code></pre>
+      <h5>What you get</h5>
+      <dl>
+        <dt><strong>hwm-asl</strong></dt>
+        <dd>Provides <code>decodeASL()</code> and <code>roll()</code> functions<dd>
+        <dt><strong>latlon-geohash</strong></dt>
+        <dd>Transcoder between Latitude + Longitude pair and Geohash</dd>
+        <dt><strong>geolib</strong><dt>
+        <dd>Contains helpers to calculate distance using metric the system</dd>
+      </dl>
+
+      <h5>Decode</h5>
+      <p>Pass any 32byte public key or 64char hexstring to the decode-function</p>
+      <pre><code>import { decodeASL } from 'hwm-asl'
+import Geohash from 'latlon-geohash'
+
+const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
+
+const { age, sex, location } = decodeASL(npub)
+
+console.log('Age:', [16, 24, 32, 42][age])
+console.log('Sex:', ['Sheman', 'Heman', 'Notman', 'Mecha'][sex])
+console.log('Location:', Geohash.decode(location, 3))</code></pre>
+
+      Produces:
+      <pre><code>Age: 24
+Sex: Sheman
+Location: { lat: -54.1, lon: -130.1 }</code></pre>
+      <sup>- Damn... my binary gender need replace(/e/,'a') and I live in Atlantis. who cares</sup>
+    </section>
+  </main>
+  <script type="module">
+    import { roll, SANE_DEFAULT } from './index.esm.js'
+    import Geohash from './node_modules/latlon-geohash/latlon-geohash.js'
+    let elForm
+    function generate (event) {
+      event.preventDefault()
+      const fd = new FormData(event.target)
+      const age = parseInt(fd.get('age'))
+      const sex = parseInt(fd.get('sex'))
+      const lat = parseFloat(fd.get('lat'))
+      const lon = parseFloat(fd.get('lon'))
+      const location = Geohash.encode(lat, lon, 6)
+      console.log('Generating', age, sex, location)
+      const secret = roll(age, sex, location, SANE_DEFAULT, 5000)
+      console.log('Secret rolled', secret)
+    }
+
+    async function fetchLocation (event) {
+      event.preventDefault()
+      const res = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) reject(new Error('Browser does not support geolocation APIs'))
+        else navigator.geolocation.getCurrentPosition(resolve, reject)
+      })
+      document.getElementById('lat').value = res.coords.latitude
+      document.getElementById('lon').value = res.coords.longitude
+    }
+
+    function boot () {
+      console.log('initializing...')
+      elForm = document.getElementById('constraints')
+      elForm.onsubmit = generate
+      document.getElementById('btn-geo')
+        .addEventListener('click', fetchLocation)
+    }
+    document.addEventListener('DOMContentLoaded', boot)
+  </script>
+</body>
+</html>

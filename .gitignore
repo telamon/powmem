@@ -1,0 +1,13 @@
+*
+!.gitignore
+!LICENSE
+!README.md
+!package.json
+!index.js
+!index.esm.js
+!test.js
+!docs/
+!docs/.nojekyll
+!docs/CNAME
+!docs/demo.html
+!demo.js
