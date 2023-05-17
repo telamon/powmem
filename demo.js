@@ -90,6 +90,9 @@ function decodePublicKey (event) {
     ASL =  decodeASL(value)
   }
   const GPS = Geohash.decode(ASL.location)
+
+  // TODO: example line
+  document.getElementById('portrait').innerText = 'bob'
 }
 
 /**

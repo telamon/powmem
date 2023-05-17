@@ -51,6 +51,11 @@
     #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; }
     #bitviz .ag code { color: #d2f8fc; background-color: #5A6166; box-shadow: 0 0 5px #a3d4ff87; }
     #bitviz .cu code { color: orange; background-color: #775009; }
+
+    #avatar { text-align: center; }
+    #portrait {
+      font-size: 5em;
+    }
   </style>
 </head>
 <body>
@@ -158,12 +163,16 @@
         <div><input id="inp-pk" type="text" placeholder="Paste public key here"/></div>
         <div><button id="btn-nip07"class="secondary outline" style="max-width: 10em">NIP-07 reveal 🎉</button></div>
       </div>
-      <div>
-        HUMAN TROLL
-        LVL24
-        OCEANIA
+      <div id="avatar">
+        <div id="portrait">🙍</div>
+        <div>
+          <span id="flag">🏴‍☠️</span>
+          <span id="age">24</span>
+        </div>
+        <div id="location">OCEANIA</div>
+        <br/>
+        <a href="#" role="button">Share on nostr</a>
       </div>
-      <button>Share to nostr</button>
       <!-- TODO: 
         Hello, It turns out I am a [age][sex][location].
         I might #reroll https://github.com/telamon/hwm-asl/demo.html
