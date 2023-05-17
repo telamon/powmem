@@ -2,20 +2,24 @@ import { decodeASL, roll } from './index.js'
 import Geohash from 'latlon-geohash'
 let elForm
 let isMining = false
+let secret = null
+
 /**
  * Updates the 'result' section after/while
  * key-generation
  * @type {(isMining: boolean, secret: string) => void}
  */
-function updateResult (isMining, secret) {
+function updateMiningState (isMining, secret) {
   
 }
 
 function generate (event) {
   event.preventDefault()
   if (isMining) { // -- STOP KEYGEN
+    console.log('KEYGEN: STOP')
     isMining = false
   } else { // -- START KEYGEN
+    console.log('KEYGEN: START')
     const fd = new FormData(event.target)
     const age = parseInt(fd.get('age'))
     const sex = parseInt(fd.get('sex'))
@@ -25,12 +29,15 @@ function generate (event) {
     const location = Geohash.encode(lat, lon, 6)
     console.log('Generating', age, sex, location)
     isMining = true
-    let secret = null
-    // while (!secret && isMining) {
-      secret = roll(age, sex, location, bits, 5000)
-    // }
-    console.log('Secret rolled', secret)
-    isMining = false
+    secret = null
+    const start = performance.now()
+    const keysTested = 0
+    const rollLoop = () => setTimeout(() => {
+      if (!secret && isMining) secret = roll(age, sex, location, bits, 5000)
+      else isMining = false
+    }, 20)
+    rollLoop()
+    // console.log('Secret rolled', secret)
   }
 }
 
