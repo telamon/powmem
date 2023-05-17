@@ -17,11 +17,16 @@ function updateMiningState (isMining, secret) {
 
 function generate (event) {
   event.preventDefault()
+  const elBtn = document.getElementById('btn-generate')
   if (isMining) { // -- STOP KEYGEN
     console.log('KEYGEN: STOP')
     isMining = false
+    elBtn.classList.remove('active')
+    elBtn.innerText = 'Generate'
   } else { // -- START KEYGEN
     console.log('KEYGEN: START')
+    elBtn.classList.add('active')
+    elBtn.innerText = 'Stop'
     const fd = new FormData(event.target)
     const age = parseInt(fd.get('age'))
     const sex = parseInt(fd.get('sex'))
@@ -33,11 +38,20 @@ function generate (event) {
     isMining = true
     secret = null
     const start = performance.now()
-    const keysTested = 0
+    let keysTested = 0
+    const testCount = 1000
     const rollLoop = () => setTimeout(() => {
-      if (!secret && isMining) secret = roll(age, sex, location, bits, 5000)
+      if (!secret && isMining) {
+        secret = roll(age, sex, location, bits, testCount)
+        keysTested += testCount
+        const hashRate = keysTested / (performance.now() - start)
+        document.getElementById('hashrate').innerText = `Hashrate: ${(hashRate * 1000).toFixed(2)} keys/s`
+      }
+
+      // Auto-restart/stop
+      if (!secret && isMining) rollLoop()
       else isMining = false
-    }, 20)
+    }, 10)
     rollLoop()
     // console.log('Secret rolled', secret)
   }

@@ -53,9 +53,8 @@
     #bitviz .cu code { color: orange; background-color: #775009; }
 
     #avatar { text-align: center; }
-    #portrait {
-      font-size: 5em;
-    }
+    #portrait { font-size: 5em; }
+    button#btn-generate.active { background-color: #9b0668; }
   </style>
 </head>
 <body>
@@ -104,58 +103,59 @@
         let relays that appeal more to some audiences and less to others emerge.<br/>
       </dd>
     </dl>
-    <section>
     <br/>
-    <h2>Keygen</h2>
-    <form id="constraints">
-      <label for="age">Age</label>
-      <select id="age" name="age" required>
-        <option value="" selected>Ask your parents</option>
-        <option value="0">16+</option>
-        <option value="1">24+</option>
-        <option value="2">32+</option>
-        <option value="3">42+</option>
-      </select>
+    <article type="card">
+      <header><h2 style="margin-bottom: 0;">Keygen</h2></header>
+      <form id="constraints">
+        <label for="age">Age</label>
+        <select id="age" name="age" required>
+          <option value="" selected>Ask your parents</option>
+          <option value="0">16+</option>
+          <option value="1">24+</option>
+          <option value="2">32+</option>
+          <option value="3">42+</option>
+        </select>
 
-      <label for="sex">Gender</label>
-      <select id="sex" name="sex" required>
-        <option value="" selected>Pick one</option>
-        <option value="0">Female</option>
-        <option value="1">Male</option>
-        <option value="2">Non-binary</option>
-        <option value="3">Robot</option>
-      </select>
-      <div class="grid">
-        <div>
-          <label for="latitude">Latitude</label>
-          <input type="number" id="lat" name="lat" step="0.0001"/>
+        <label for="sex">Gender</label>
+        <select id="sex" name="sex" required>
+          <option value="" selected>Pick one</option>
+          <option value="0">Female</option>
+          <option value="1">Male</option>
+          <option value="2">Non-binary</option>
+          <option value="3">Robot</option>
+        </select>
+        <div class="grid">
+          <div>
+            <label for="latitude">Latitude</label>
+            <input type="number" id="lat" name="lat" step="0.0001"/>
+          </div>
+          <div>
+            <label for="longitude">Longitude</label>
+            <input type="number" id="lon" name="lon" step="0.0001"/>
+          </div>
+          <div>
+            <label for="btn-geo"><strong>--Or--</strong> ask your device for location</label>
+            <button id="btn-geo" class="outline">Current Location</button>
+          </div>
         </div>
-        <div>
-          <label for="longitude">Longitude</label>
-          <input type="number" id="lon" name="lon" step="0.0001"/>
-        </div>
-        <div>
-          <label for="btn-geo"><strong>--Or--</strong> ask your device for location</label>
-          <button id="btn-geo" class="outline">Current Location</button>
-        </div>
-      </div>
-      <details>
-        <summary>Advanced options</summary>
-        <label for="bits">Accuracy (bits)</label>
-        <input id="bits" name="bits" type="number" min="5" max="20" value="15"/>
-      </details>
-      <label for="switch">
-        🔇
-        <input type="checkbox" id="music-switch" name="music" role="switch">
-      </label><br/>
-      <button id="btn-generate" type="submit">Generate</button>
-    </form>
-    </section>
+        <details>
+          <summary>Advanced options</summary>
+          <label for="bits">Accuracy (bits)</label>
+          <input id="bits" name="bits" type="number" min="5" max="20" value="15"/>
+        </details>
+        <label for="switch">
+          🔇
+          <input type="checkbox" id="music-switch" name="music" role="switch">
+        </label><br/>
+        <button id="btn-generate" type="submit">Generate</button>
+      </form>
+      <footer>
 
-    <section id="result">
-      Set your constraints and press Generate
-      <!-- TODO: mined key goes here -->
-    </section>
+        <span id="hashrate"><span>
+        Set your constraints and press Generate
+        <!-- TODO: mined key goes here -->
+      </footer>
+    </article>
 
     <section id="decode">
       <h2>Decoder</h2>

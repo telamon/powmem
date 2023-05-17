@@ -176,7 +176,7 @@ function binstr (x, cap, bs = true) {
 let FLAGS = null
 function buildFlagLUT () {
   if (FLAGS) return FLAGS
-  const data = JSON.parse(FLJSON)
+  const data = JSON.parse(FLJSON) // TODO: THEY're WRONG! Lon lat is swapped!!!!!!
   FLAGS = {}
   for (const f in data) {
     FLAGS[f] = packGeo(data[f], 40)
