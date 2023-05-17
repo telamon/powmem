@@ -45,17 +45,13 @@ function decodePublicKey (event) {
   if(!isHex.test(value)) {
     let {type, data} = nip19.decode(value)
     ASL =  decodeASL(data)
-    console.log("is HEX value and decoded using nip-19", data)
   }
   else {
     ASL =  decodeASL(value)
-    console.log("is hex value", value)
   }
   const GPS = Geohash.decode(ASL.location)
-console.log("ASL", ASL, "GPS location", GPS)
 
   
-  // console.info('TODO: decode hexstr and zbase32', value, data)
 }
 
 function boot () {
