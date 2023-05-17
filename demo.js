@@ -1,4 +1,4 @@
-import { decodeASL, roll } from './index.js'
+import { decodeASL, flagOf, roll } from './index.js'
 import Geohash from 'latlon-geohash'
 import {nip19} from 'nostr-tools'
 
@@ -105,18 +105,18 @@ function decodePublicKey (event) {
   else {
     ASL =  decodeASL(value)
   }
-  //Todo, verify ASL geolocations Lat and lon
   const {lat, lon} = Geohash.decode(ASL.location)
   
-  // TODO: example line
-  console.log('ASL', ASL)
-  // document.getElementById('outPortrait').innerText = 'bob'
   document.getElementById('outPortrait').innerText = portraits[ASL.sex]
   document.getElementById('outAge').innerText = ageSpans[ASL.age]
-  
   document.getElementById('outLocation').innerText = 'Sweden ish '
-  document.getElementById('outFlag').innerText = ASL.location
+  document.getElementById('outFlag').innerText = flagOf(ASL.location)
   document.getElementById('geoLink').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
+
+  // console.log(flagOf(ASL.location))
+  
+
+
 }
 
 /**
