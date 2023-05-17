@@ -44,13 +44,37 @@
     /* Begin app styles */
 
     h1 { text-align: center; }
-    h1 code { font-size: 72px; color: var(--secondary); }
+    h1 code { font-size: 1.75em; color: var(--primary); }
     #usp dt { font-size: 1.25em; font-weight: bold; color: var(--secondary); }
+
+    #bitviz { text-align: center; }
+    #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; }
+    #bitviz .ag code { color: #d2f8fc; background-color: #5A6166; box-shadow: 0 0 5px #a3d4ff87; }
+    #bitviz .cu code { color: orange; background-color: #775009; }
   </style>
 </head>
 <body>
   <main class="container">
-    <h1><code>POP-0101</code><br/>Holistic Work Memory</h1>
+    <h1>
+      <a href="https://github.com/telamon/pops/blob/master/POP-0101.md">
+        <code>POP-0101</code>
+      </a>
+      <br/>Holistic Work Memory
+    </h1>
+    <section>
+      <h2 id="bitviz">
+        <span class="au"><code>1</code> <code>0</code></span>
+        <span class="ag"><code>1</code> <code>0</code></span>
+        <span class="cu">
+          <code style="opacity: 1;">1</code>
+          <code style="opacity: 0.9;">1</code> <code style="opacity: 0.8;">0</code>
+          <code style="opacity: 0.7;">1</code> <code style="opacity: 0.6;">1</code>
+          <code style="opacity: 0.5;">0</code> <code style="opacity: 0.4;">0</code>
+          <code style="opacity: 0.3;">0</code>
+        </span>
+      </h2>
+    </section>
+
     <h2>Why?</h2><!-- *deep breath* -->
     <dl id="usp">
       <dt>Make PoW slightly sustainable</dt>
@@ -75,17 +99,6 @@
         let relays that appeal more to some audiences and less to others emerge.<br/>
       </dd>
     </dl>
-    <section>
-      <h2><!-- TODO css styling -->
-        <span class="ag"><code>1</code> <code>0</code></span>
-        <span class="ag"><code>1</code> <code>0</code></span>
-        <span class="ag">
-          <code>0</code> <code>0</code>
-          <code>1</code> <code>0</code>
-          <code>1</code> <code>1</code>
-        </span>
-      </h2>
-    </section>
 
     <section>
     <h2>Keygen</h2>
