@@ -1,4 +1,4 @@
-import { decodeASL, roll } from './index.js'
+import { decodeASL, flagOf, roll } from './index.js'
 import Geohash from 'latlon-geohash'
 import { nip19 } from 'nostr-tools'
 import { schnorr } from '@noble/curves/secp256k1'
@@ -131,7 +131,7 @@ function decodePublicKey (event) {
 
   document.getElementById('outLocation').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
   document.getElementById('outLocation').innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`
-  document.getElementById('outFlag').innerText = ASL.location
+  document.getElementById('outFlag').innerText = flagOf(ASL.location)
 }
 
 /**
