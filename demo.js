@@ -50,8 +50,6 @@ function decodePublicKey (event) {
     ASL =  decodeASL(value)
   }
   const GPS = Geohash.decode(ASL.location)
-
-  
 }
 
 function boot () {
