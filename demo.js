@@ -1,5 +1,7 @@
 import { decodeASL, roll } from './index.js'
 import Geohash from 'latlon-geohash'
+import {nip19} from 'nostr-tools'
+
 let elForm
 let isMining = false
 let secret = null
@@ -75,9 +77,19 @@ async function fetchLocation (event) {
  * @type {(event: Event) => void}
  */
 function decodePublicKey (event) {
+
   const { value } = event.target
-  console.info('TODO: decode hexstr and zbase32', value)
-  const { age, sex, location } = decodeASL(value)
+  const isHex = new RegExp(/^[a-fA-F0-9]+$/);
+
+  let ASL = null
+  if(!isHex.test(value)) {
+    let {type, data} = nip19.decode(value)
+    ASL =  decodeASL(data)
+  }
+  else {
+    ASL =  decodeASL(value)
+  }
+  const GPS = Geohash.decode(ASL.location)
 }
 
 /**
