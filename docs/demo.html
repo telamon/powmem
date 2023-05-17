@@ -57,6 +57,7 @@
     #outPortrait {
       font-size: 5em;
     }
+    #secret { text-align: center; }
   </style>
 </head>
 <body>
@@ -152,10 +153,8 @@
         <button id="btn-generate" type="submit">Generate</button>
       </form>
       <footer>
-
-        <span id="hashrate"><span>
-        Set your constraints and press Generate
-        <!-- TODO: mined key goes here -->
+        <span id="hashrate">Set your constraints and press Generate</span>
+        <pre><code id="secret"></code></pre>
       </footer>
     </article>
 
@@ -171,9 +170,9 @@
           <span id="outFlag">🏴‍☠️</span>
           <span id="outAge">24</span>
         </div>
-        <div id="outLocation">OCEANIA</div>
+        <a href="#" id="outLocation">OCEANIA</a>
         <br/>
-        <a id="geoLink" href="#link" role="button">Your map location</a>
+        <br/>
         <a href="#" role="button">Share on nostr</a>
       </div>
       <!-- TODO: 

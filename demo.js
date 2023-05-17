@@ -1,6 +1,8 @@
 import { decodeASL, roll } from './index.js'
 import Geohash from 'latlon-geohash'
-import {nip19} from 'nostr-tools'
+import { nip19 } from 'nostr-tools'
+import { schnorr } from '@noble/curves/secp256k1'
+import { bytesToHex } from '@noble/hashes/utils'
 
 let elForm
 let isMining = false
@@ -11,31 +13,35 @@ let secret = null
  * key-generation
  * @type {(isMining: boolean, secret: string) => void}
  */
-function updateMiningState (isMining, secret) {
-  
+function setMiningState (state) {
+  const elBtn = document.getElementById('btn-generate')
+  isMining = state
+  if (state) {
+    elBtn.classList.add('active')
+    elBtn.innerText = 'Stop'
+  } else {
+    elBtn.classList.remove('active')
+    elBtn.innerText = 'Generate'
+  }
 }
 
 function generate (event) {
   event.preventDefault()
-  const elBtn = document.getElementById('btn-generate')
   if (isMining) { // -- STOP KEYGEN
     console.log('KEYGEN: STOP')
-    isMining = false
-    elBtn.classList.remove('active')
-    elBtn.innerText = 'Generate'
+    setMiningState(false)
   } else { // -- START KEYGEN
     console.log('KEYGEN: START')
-    elBtn.classList.add('active')
-    elBtn.innerText = 'Stop'
+    setMiningState(true)
     const fd = new FormData(event.target)
     const age = parseInt(fd.get('age'))
     const sex = parseInt(fd.get('sex'))
     const lat = parseFloat(fd.get('lat'))
     const lon = parseFloat(fd.get('lon'))
     const bits = parseInt(fd.get('bits'))
+    const mute = !!fd.get('music')
     const location = Geohash.encode(lat, lon, 6)
-    console.log('Generating', age, sex, location)
-    isMining = true
+    console.log('Generating', age, sex, location, mute)
     secret = null
     const start = performance.now()
     let keysTested = 0
@@ -50,7 +56,14 @@ function generate (event) {
 
       // Auto-restart/stop
       if (!secret && isMining) rollLoop()
-      else isMining = false
+      else {
+        if (secret) {
+          document.getElementById('secret').innerText = nip19.nsecEncode(secret)
+          document.getElementById('inp-pk').value = nip19.npubEncode(bytesToHex(schnorr.getPublicKey(secret)))
+          decodePublicKey()
+        }
+        setMiningState(false)
+      }
     }, 10)
     rollLoop()
     // console.log('Secret rolled', secret)
@@ -69,6 +82,7 @@ async function nip07reveal (event) {
   }
   const pk = await window.nostr.getPublicKey()
   document.getElementById('inp-pk').value = pk
+  decodePublicKey()
 }
 
 /**
@@ -91,32 +105,33 @@ async function fetchLocation (event) {
  * @type {(event: Event) => void}
  */
 function decodePublicKey (event) {
-  const portraits = ["👩","👨","🏳️‍🌈","🤖"]
-  const ageSpans = ["16+","24+","32+","42+"]
+  if (event) event.preventDefault()
+  const portraits = ['👩', '👨', '🏳️‍🌈', '🤖']
+  const ageSpans = ['16+', '24+', '32+', '42+']
 
-  const { value } = event.target
-  const isHex = new RegExp(/^[a-fA-F0-9]+$/);
+  const { value } = document.getElementById('inp-pk')
+  const isHex = /^[a-fA-F0-9]+$/
 
   let ASL = null
-  if(!isHex.test(value)) {
-    let {type, data} = nip19.decode(value)
-    ASL =  decodeASL(data)
+  if (!isHex.test(value)) {
+    const { type, data } = nip19.decode(value)
+    if (type !== 'npub') throw new Error(`Invalid type: ${type}`)
+    ASL = decodeASL(data)
+  } else {
+    ASL = decodeASL(value)
   }
-  else {
-    ASL =  decodeASL(value)
-  }
-  //Todo, verify ASL geolocations Lat and lon
-  const {lat, lon} = Geohash.decode(ASL.location)
-  
+  // Todo, verify ASL geolocations Lat and lon
+  const { lat, lon } = Geohash.decode(ASL.location)
+
   // TODO: example line
   console.log('ASL', ASL)
   // document.getElementById('outPortrait').innerText = 'bob'
   document.getElementById('outPortrait').innerText = portraits[ASL.sex]
   document.getElementById('outAge').innerText = ageSpans[ASL.age]
-  
-  document.getElementById('outLocation').innerText = 'Sweden ish '
+
+  document.getElementById('outLocation').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
+  document.getElementById('outLocation').innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`
   document.getElementById('outFlag').innerText = ASL.location
-  document.getElementById('geoLink').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
 }
 
 /**
