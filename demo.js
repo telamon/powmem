@@ -91,6 +91,8 @@ async function fetchLocation (event) {
  * @type {(event: Event) => void}
  */
 function decodePublicKey (event) {
+  const portraits = ["👩","👨","🏳️‍🌈","🤖"]
+  const ageSpans = ["16+","24+","32+","42+"]
 
   const { value } = event.target
   const isHex = new RegExp(/^[a-fA-F0-9]+$/);
@@ -103,10 +105,18 @@ function decodePublicKey (event) {
   else {
     ASL =  decodeASL(value)
   }
-  const GPS = Geohash.decode(ASL.location)
-
+  //Todo, verify ASL geolocations Lat and lon
+  const {lat, lon} = Geohash.decode(ASL.location)
+  
   // TODO: example line
-  document.getElementById('portrait').innerText = 'bob'
+  console.log('ASL', ASL)
+  // document.getElementById('outPortrait').innerText = 'bob'
+  document.getElementById('outPortrait').innerText = portraits[ASL.sex]
+  document.getElementById('outAge').innerText = ageSpans[ASL.age]
+  
+  document.getElementById('outLocation').innerText = 'Sweden ish '
+  document.getElementById('outFlag').innerText = ASL.location
+  document.getElementById('geoLink').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
 }
 
 /**
