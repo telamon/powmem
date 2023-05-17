@@ -1,28 +1,92 @@
 <!doctype html>
 <html>
 <head>
-  <title>HWM-ASL Keygen</title>
+  <title>Decent Keygen</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+  <style>
+    /* Deep-purple Light scheme (Default) */
+    /* Can be forced with data-theme="light" */
+    [data-theme="light"],
+    :root:not([data-theme="dark"]) {
+      --primary: #5e35b1;
+      --primary-hover: #512da8;
+      --primary-focus: rgba(94, 53, 177, 0.125);
+      --primary-inverse: #FFF;
+    }
+
+    /* Deep-purple Dark scheme (Auto) */
+    /* Automatically enabled if user has Dark mode enabled */
+    @media only screen and (prefers-color-scheme: dark) {
+      :root:not([data-theme]) {
+        --primary: #5e35b1;
+        --primary-hover: #673ab7;
+        --primary-focus: rgba(94, 53, 177, 0.25);
+        --primary-inverse: #FFF;
+      }
+    }
+
+    /* Deep-purple Dark scheme (Forced) */
+    /* Enabled if forced with data-theme="dark" */
+    [data-theme="dark"] {
+      --primary: #5e35b1;
+      --primary-hover: #673ab7;
+      --primary-focus: rgba(94, 53, 177, 0.25);
+      --primary-inverse: #FFF;
+    }
+
+    /* Deep-purple (Common styles) */
+    :root {
+      --form-element-active-border-color: var(--primary);
+      --form-element-focus-color: var(--primary-focus);
+      --switch-color: var(--primary-inverse);
+      --switch-checked-background-color: var(--primary);
+    }
+    /* Begin app styles */
+
+    h1 { text-align: center; }
+    h1 code { font-size: 72px; color: var(--secondary); }
+    #usp dt { font-size: 1.25em; font-weight: bold; color: var(--secondary); }
+  </style>
 </head>
 <body>
   <main class="container">
-    <h1><code>POP-0101</code> Holistic Work Memory</h1>
-    <p>
-      This is a Schnorr key generator
-      that encodes ASL into the first 19-bits of your public key.<br/>
-      <sup>- Make PoW slightly less wasteful</sup>
-      <br/>
-      It enables a true decentralized approach to store
-      information about the author/keyholder.<br/>
-      One use-case is to holistically sort the hashspace
-      letting nodes attract other nodes with similar content.<br/>
-      <sup>- Form natural clusters</sup>
-      <br/>
-      Another use-case would be to decentralize nostr data
-      distribution by creating relays that appeal more to some audiences and less to others.<br/>
-      Relieving burden, deduplication and geographical latencies as the network grows.<br/>
-      <sup>- Decentralize phat relays</sup>
-    </p>
+    <h1><code>POP-0101</code><br/>Holistic Work Memory</h1>
+    <h2>Why?</h2><!-- *deep breath* -->
+    <dl id="usp">
+      <dt>Make PoW slightly sustainable</dt>
+      <!-- PoW is the very definition of waste -->
+      <dd>
+        This is a Schnorr key generator based on a spec
+        that encodes ASL into the first 19-bits of your public key.<br/>
+        It uses the same mechanics as Proof of Work but burns data instead of burning zeros.<br/>
+      </dd>
+      <dt>True Decentralized Taxonomy</dt>
+      <dd>
+        By redistributing the data across popular metrics.<br/>
+        We can holistically sort the hashspace,
+        letting clients attract other clients with similar interests.<br/>
+        Forming natural clusters.
+      </dd>
+      <dt>Localize relays</dt>
+      <dd>
+        The big global relays are not bad yet, we need them.
+        But we also need many more local actors to translate and import culture.<br/>
+        So In order to relive the burden of event parsing and sustain network growth:
+        let relays that appeal more to some audiences and less to others emerge.<br/>
+      </dd>
+    </dl>
+    <section>
+      <h2>
+        <span class="ag"><code>1</code> <code>0</code></span>
+        <span class="ag"><code>1</code> <code>0</code></span>
+        <span class="ag">
+          <code>0</code> <code>0</code>
+          <code>1</code> <code>0</code>
+          <code>1</code> <code>1</code>
+        </span>
+      </h2>
+    </section>
+    <h2>Keygen</h2>
     <form id="constraints">
       <label for="age">Age</label>
       <select id="age" name="age" required>
@@ -51,8 +115,8 @@
           <input type="number" id="lon" name="lon" step="0.0001"/>
         </div>
         <div>
-          <label for="btn-geo">Query your device for location</label>
-          <button id="btn-geo">Current Location</button>
+          <label for="btn-geo"><strong>--Or--</strong> ask your device for location</label>
+          <button id="btn-geo" class="outline">Current Location</button>
         </div>
       </div>
       <details>
@@ -64,9 +128,19 @@
     </form>
     <section id="result">
       Set your constraints and press Generate
+      <!-- TODO: mined key goes here -->
+    </section>
+
+    <section id="decode">
+      <h2>Decoder</h2>
+      <div class="grid">
+        <div><input id="inp-pk" type="text" placeholder="Paste public key here"/></div>
+        <div ><button id="btn-nip07"class="secondary outline" style="max-width: 10em">NIP-07 reveal</button></div>
+      </div>
     </section>
 
     <section>
+      <!-- TODO: copy/move to README.md -->
       <h2>How to</h2>
       <h5>Install</h5>
       <pre><code>$ npm i hwm-asl latlon-geohash geolib</code></pre>
@@ -90,51 +164,15 @@ const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
 const { age, sex, location } = decodeASL(npub)
 
 console.log('Age:', [16, 24, 32, 42][age])
-console.log('Sex:', ['Sheman', 'Heman', 'Notman', 'Mecha'][sex])
+console.log('Sex:', ['Sherry', 'Herman', 'Norton', '0dessa'][sex])
 console.log('Location:', Geohash.decode(location, 3))</code></pre>
 
       Produces:
       <pre><code>Age: 24
-Sex: Sheman
+Sex: Shreman
 Location: { lat: -54.1, lon: -130.1 }</code></pre>
-      <sup>- Damn... my binary gender need replace(/e/,'a') and I live in Atlantis. who cares</sup>
     </section>
   </main>
-  <script type="module">
-    import { roll, SANE_DEFAULT } from './index.esm.js'
-    import Geohash from './node_modules/latlon-geohash/latlon-geohash.js'
-    let elForm
-    function generate (event) {
-      event.preventDefault()
-      const fd = new FormData(event.target)
-      const age = parseInt(fd.get('age'))
-      const sex = parseInt(fd.get('sex'))
-      const lat = parseFloat(fd.get('lat'))
-      const lon = parseFloat(fd.get('lon'))
-      const location = Geohash.encode(lat, lon, 6)
-      console.log('Generating', age, sex, location)
-      const secret = roll(age, sex, location, SANE_DEFAULT, 5000)
-      console.log('Secret rolled', secret)
-    }
-
-    async function fetchLocation (event) {
-      event.preventDefault()
-      const res = await new Promise((resolve, reject) => {
-        if (!navigator.geolocation) reject(new Error('Browser does not support geolocation APIs'))
-        else navigator.geolocation.getCurrentPosition(resolve, reject)
-      })
-      document.getElementById('lat').value = res.coords.latitude
-      document.getElementById('lon').value = res.coords.longitude
-    }
-
-    function boot () {
-      console.log('initializing...')
-      elForm = document.getElementById('constraints')
-      elForm.onsubmit = generate
-      document.getElementById('btn-geo')
-        .addEventListener('click', fetchLocation)
-    }
-    document.addEventListener('DOMContentLoaded', boot)
-  </script>
+  <script type="module" src="./demo.build.js"></script>
 </body>
 </html>

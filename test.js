@@ -4,18 +4,11 @@ import {
   decodeASL,
   packGeo,
   roll,
-  unpackGeo
+  unpackGeo,
+  flagOf
 } from './index.js'
-
 import Geohash from 'latlon-geohash'
-
-const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
-
-const { age, sex, location } = decodeASL(npub)
-
-console.log('Age', [16, 24, 32, 42][age])
-console.log('Sex', ['Sheman', 'Heman', 'Noman', 'Mecha'][sex])
-console.log('Location', Geohash.decode(location, 3))
+import { readFileSync, writeFileSync } from 'node:fs'
 
 test('Decode ASL', async t => {
   const secret = '9ec11fa81c53e7115b014a373a4b66172e4f476091a57b20be1103e935738f9c'
@@ -41,4 +34,22 @@ test('Geohash bitpacking', async t => {
   const o = unpackGeo(n, 14)
   t.equal(o, 'u12')
   t.equal(unpackGeo(packGeo('u6282sv', 30), 18), 'u628')
+})
+
+test.skip('ChatGPT provided flag->location LUT', async t => {
+  const data = readFileSync('flags.csv').toString()
+  const lines = data.split('\n').map(line => {
+    const [flag, lat, lon] = line.split(',')
+    if (!flag || !lat || !lon) return undefined
+    const hash = Geohash.encode(parseFloat(lat), parseFloat(lon))
+    return [flag, hash] // packGeo(hash, 40)]
+  })
+  const table = JSON.stringify(lines.filter(x => x).reduce((m, [k, v]) => (m[k] = v, m), {}))
+  writeFileSync('flags.js', table)
+  debugger
+})
+
+test.only('Picks closest flag using XOR distance', async t => {
+  const flag = flagOf('u6282sv')
+  t.equal(flag, 'bkb')
 })
