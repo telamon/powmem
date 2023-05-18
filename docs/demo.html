@@ -61,9 +61,10 @@
       font-size: 5em;
     }
     #secret { text-align: center; }
+    body { background-color: #11191f; }
   </style>
 </head>
-<body>
+<body data-theme="dark">
   <main class="container">
     <h1>
       <a href="https://github.com/telamon/pops/blob/master/POP-0101.md">
@@ -106,12 +107,12 @@
       <dd>
         Create incentive for local actors to run relays so that<br/>
         relays appealing more to some audiences and less to others emerge.<br/>
-        Importing translators of culture is vital to sustain network growth.
+        Importing translators of culture is vital to sustain network growth.✌️
         <!-- More nodes, more resources, more transactions, less centralization. -->
       </dd>
     </dl>
     <br/>
-    <article type="card">
+    <article type="card" data-theme="dark">
       <header><h2 style="margin-bottom: 0;">Keygen</h2></header>
       <form id="constraints">
         <label for="age">Age</label>
@@ -134,11 +135,11 @@
         <div class="grid">
           <div>
             <label for="latitude">Latitude</label>
-            <input type="number" id="lat" name="lat" step="0.00001"/>
+            <input type="number" id="lat" name="lat" step="0.000001"/>
           </div>
           <div>
             <label for="longitude">Longitude</label>
-            <input type="number" id="lon" name="lon" step="0.00001"/>
+            <input type="number" id="lon" name="lon" step="0.000001"/>
           </div>
           <div>
             <label for="btn-geo"><strong>--Or--</strong> ask your device for location</label>
@@ -149,11 +150,20 @@
           <summary>Advanced options</summary>
           <label for="bits">Geo accuracy (bits) default: 15</label>
           <input id="bits" name="bits" type="number" min="5" max="20" value="15"/>
+          <small>
+            This setting is for debug/benchmarks, &gt;30bits reveals your real location + very long time to generate key.
+          </small>
+
         </details>
         <label for="switch">
-          🔇
           <input type="checkbox" id="music-switch" name="music" role="switch">
-        </label><br/>
+          🔇
+        </label>
+        <label for="switch" title="Switch off, lean back, enjoy.">
+          <input type="checkbox" id="pow-switch" name="pow" role="switch" checked />
+          🔥🌳🔥
+        </label>
+        <br/>
         <button id="btn-generate" type="submit">Generate</button>
       </form>
       <footer>
@@ -223,6 +233,7 @@ Country: 🇲🇫
 Coordinates: { lat: -75.2, lon: 10.5 }</code></pre>
     </section>
   </main>
+  <script type="text/javascript" src="libxm.js"></script><!-- Creds: https://github.com/Artefact2/libxm.js/ -->
   <script type="module" src="./demo.build.js"></script>
 </body>
 </html>
