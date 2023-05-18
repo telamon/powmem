@@ -1,12 +1,21 @@
 import { decodeASL, flagOf, roll } from './index.js'
 import Geohash from 'latlon-geohash'
-import { nip19 } from 'nostr-tools'
+import { nip19, SimplePool, getEventHash, signEvent } from 'nostr-tools'
 import { schnorr } from '@noble/curves/secp256k1'
 import { bytesToHex } from '@noble/hashes/utils'
 let elForm
 let isMining = false
 let secret = null
 let player = null
+let pool = null
+const relays = ['wss://nos.lol']
+
+/**
+ * Connects to nostr network
+ */
+function initPool () {
+  pool = new SimplePool()
+} 
 
 /**
  * Updates the 'result' section after/while
@@ -40,15 +49,15 @@ async function generate (event) {
     const lat = parseFloat(fd.get('lat'))
     const lon = parseFloat(fd.get('lon'))
     const burn = !!fd.get('pow')
-    const bits = burn ? parseInt(fd.get('bits')) : 5
+    const bits = burn ? parseInt(fd.get('bits')) : 8
     const mute = !!fd.get('music')
     const location = Geohash.encode(lat, lon, 6)
     console.log('Generating', age, sex, location, mute)
     secret = null
     const start = performance.now()
     let keysTested = 0
-    const testCount = 1000
-    if (!mute) await initSound()
+    const testCount = burn ? 1000 : 100
+    if (!mute) await initSound(burn ? 24000 : 48000)
     setMiningState(true)
     const rollLoop = () => setTimeout(() => {
       if (!secret && isMining) {
@@ -104,6 +113,7 @@ async function fetchLocation (event) {
   document.getElementById('lon').value = res.coords.longitude.toFixed(5)
 }
 
+const ageSpans = ['16+', '24+', '32+', '48+']
 /**
  * Decodes public Key pasted in input and
  * updates the preview/visualization
@@ -111,33 +121,91 @@ async function fetchLocation (event) {
  */
 function decodePublicKey (event) {
   if (event) event.preventDefault()
-  const portraits = ['👩', '👨', '🌈', '🤖']
-  const ageSpans = ['16+', '24+', '32+', '42+']
 
-  const { value } = document.getElementById('inp-pk')
+  let { value } = document.getElementById('inp-pk')
   if (!value.length) return
-  const isHex = /^[a-fA-F0-9]+$/
 
-  let ASL = null
-  if (!isHex.test(value)) {
-    const { type, data } = nip19.decode(value)
-    if (type !== 'npub') throw new Error(`Invalid type: ${type}`)
-    ASL = decodeASL(data)
-  } else {
-    ASL = decodeASL(value)
-  }
-  // Todo, verify ASL geolocations Lat and lon
+  if (!/^[a-fA-F0-9]+$/.test(value)) value = nip19.decode(value).data
+  const ASL = decodeASL(value)
+
   const { lat, lon } = Geohash.decode(ASL.location)
-
-  // TODO: example line
-  console.log('ASL', ASL)
-  // document.getElementById('outPortrait').innerText = 'bob'
-  document.getElementById('outPortrait').innerText = portraits[ASL.sex]
+  document.getElementById('outPortrait').innerText = emoOf(ASL.sex, ASL.age)
   document.getElementById('outAge').innerText = ageSpans[ASL.age]
-
   document.getElementById('outLocation').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
   document.getElementById('outLocation').innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`
   document.getElementById('outFlag').innerText = flagOf(ASL.location)
+  document.getElementById('text-share').value = mkPopaganda(value)
+}
+
+function emoOf (sex, age = 1) {
+  return [
+    ['👧', '👦', '🧒', '🔋'],
+    ['👩', '👨', '🧑', '🤖'],
+    ['👵', '👴', '🧓', '📟'],
+    ['💃', '🕺', '🌈', '💾']
+  ][age][sex]
+}
+
+function mkPopaganda (pk) {
+  let ft = 'Banner'
+  let emo = 'Lizard Emoji'
+  let at = 'lvl24'
+  if (pk) {
+    if (!/^[a-fA-F0-9]+$/.test(pk)) pk = nip19.decode(pk).data
+    const { age, sex, location } = decodeASL(pk)
+    ft = flagOf(location)
+    emo = emoOf(sex, age)
+    at = ageSpans[age]
+  }
+  return `I decoded my public key and it turned out like this:\n\n${ft} ${emo} ${at}.\n
+Should I #reroll ?
+https://telamon.github.io/powmem/demo.html`
+}
+
+async function shareDecode (ev) {
+  if (ev) ev.preventDefault()
+  const NIP07 = 'nip07'
+  const LOCAL = 'local'
+  const mode = secret
+    ? LOCAL
+    : window.nostr ? NIP07 : undefined
+
+  if (!mode) return window.alert('Generate a key first')
+
+  let pk = null
+  if (mode === LOCAL) pk = bytesToHex(schnorr.getPublicKey(secret))
+  else if (mode === NIP07) pk = await window.nostr.getPublicKey()
+
+  if (!pk) return window.alert('Generate a key or press accept in your NIP-07 extension')
+
+  // const profile = await nip05.queryProfile('telamon@xorcery.co')
+  // console.log(profile)
+  console.info('Post using key', pk)
+  const tarea = document.getElementById('text-share')
+  tarea.disabled = true
+  document.getElementById('btn-share').disabled = true
+  const asl = decodeASL(pk)
+  const tTags = [
+    ['t', 'reroll'],
+    ['t', 'powmem',],
+    ['t', 'decentralize']
+  ]
+  const gTags = ['g', asl.location]
+  const event = {
+    kind: 1,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [gTags, ...tTags],
+    content: tarea.value
+  }
+  event.id = getEventHash(event)
+  // event.sig = getSignature(event, sk) // TODO: nostr-tools yet released.
+  event.sig = mode === LOCAL
+    ? signEvent(event, secret)
+    : (await window.nostr.signEvent(event))
+  initPool()
+  const pubs = pool.publish(relays, event)
+  pubs.on('ok', ev => console.info('Relay "OK": Post Accepted', ev))
 }
 
 /**
@@ -154,6 +222,9 @@ function boot () {
   document.getElementById('btn-nip07')
     .addEventListener('click', nip07reveal)
 
+  document.getElementById('btn-share')
+    .addEventListener('click', shareDecode)
+
   const pkInput = document.getElementById('inp-pk')
   pkInput.addEventListener('change', decodePublicKey)
   pkInput.addEventListener('keyup', decodePublicKey)
@@ -164,18 +235,20 @@ function boot () {
       if (!ev.target.value) player.resume()
       else player.pause()
     })
+
+  document.getElementById('text-share').value = mkPopaganda()
 }
 document.addEventListener('DOMContentLoaded', boot)
 
 /**
  * Initialize sound-system
  */
-async function initSound () {
+async function initSound (sampleRate) {
   if (!player) {
     const res = await fetch('dubmood_-_finland_sux.xm')
     const ab = await res.arrayBuffer()
     await ModPlayer.wasmLoaded()
-    player = new ModPlayer(24000, 4096 << 1)
+    player = new ModPlayer(sampleRate, 4096 << 1)
     await player.loadModule(new Uint8Array(ab))
     player.setupSources()
   }

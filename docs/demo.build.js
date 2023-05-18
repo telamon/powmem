@@ -9023,6 +9023,47 @@ function verifySignature(event) {
     event.pubkey
   );
 }
+function signEvent(event, key) {
+  return utils.bytesToHex(
+    schnorr2.signSync(getEventHash(event), key)
+  );
+}
+function matchFilter(filter, event) {
+  if (filter.ids && filter.ids.indexOf(event.id) === -1) {
+    if (!filter.ids.some((prefix) => event.id.startsWith(prefix))) {
+      return false;
+    }
+  }
+  if (filter.kinds && filter.kinds.indexOf(event.kind) === -1)
+    return false;
+  if (filter.authors && filter.authors.indexOf(event.pubkey) === -1) {
+    if (!filter.authors.some((prefix) => event.pubkey.startsWith(prefix))) {
+      return false;
+    }
+  }
+  for (let f2 in filter) {
+    if (f2[0] === "#") {
+      let tagName = f2.slice(1);
+      let values = filter[`#${tagName}`];
+      if (values && !event.tags.find(
+        ([t, v]) => t === f2.slice(1) && values.indexOf(v) !== -1
+      ))
+        return false;
+    }
+  }
+  if (filter.since && event.created_at < filter.since)
+    return false;
+  if (filter.until && event.created_at >= filter.until)
+    return false;
+  return true;
+}
+function matchFilters(filters, event) {
+  for (let i = 0; i < filters.length; i++) {
+    if (matchFilter(filters[i], event))
+      return true;
+  }
+  return false;
+}
 var fakejson_exports = {};
 __export2(fakejson_exports, {
   getHex64: () => getHex64,
@@ -9068,6 +9109,457 @@ function matchEventPubkey(json, pubkey) {
 function matchEventKind(json, kind) {
   return kind === getInt(json, "kind");
 }
+var newListeners = () => ({
+  connect: [],
+  disconnect: [],
+  error: [],
+  notice: [],
+  auth: []
+});
+function relayInit(url, options = {}) {
+  let { listTimeout = 3e3, getTimeout = 3e3, countTimeout = 3e3 } = options;
+  var ws;
+  var openSubs = {};
+  var listeners = newListeners();
+  var subListeners = {};
+  var pubListeners = {};
+  var connectionPromise;
+  async function connectRelay() {
+    if (connectionPromise)
+      return connectionPromise;
+    connectionPromise = new Promise((resolve, reject) => {
+      try {
+        ws = new WebSocket(url);
+      } catch (err) {
+        reject(err);
+      }
+      ws.onopen = () => {
+        listeners.connect.forEach((cb) => cb());
+        resolve();
+      };
+      ws.onerror = () => {
+        connectionPromise = void 0;
+        listeners.error.forEach((cb) => cb());
+        reject();
+      };
+      ws.onclose = async () => {
+        connectionPromise = void 0;
+        listeners.disconnect.forEach((cb) => cb());
+      };
+      let incomingMessageQueue = [];
+      let handleNextInterval;
+      ws.onmessage = (e) => {
+        incomingMessageQueue.push(e.data);
+        if (!handleNextInterval) {
+          handleNextInterval = setInterval(handleNext, 0);
+        }
+      };
+      function handleNext() {
+        if (incomingMessageQueue.length === 0) {
+          clearInterval(handleNextInterval);
+          handleNextInterval = null;
+          return;
+        }
+        var json = incomingMessageQueue.shift();
+        if (!json)
+          return;
+        let subid = getSubscriptionId(json);
+        if (subid) {
+          let so = openSubs[subid];
+          if (so && so.alreadyHaveEvent && so.alreadyHaveEvent(getHex64(json, "id"), url)) {
+            return;
+          }
+        }
+        try {
+          let data = JSON.parse(json);
+          switch (data[0]) {
+            case "EVENT": {
+              let id2 = data[1];
+              let event = data[2];
+              if (validateEvent(event) && openSubs[id2] && (openSubs[id2].skipVerification || verifySignature(event)) && matchFilters(openSubs[id2].filters, event)) {
+                openSubs[id2];
+                (subListeners[id2]?.event || []).forEach((cb) => cb(event));
+              }
+              return;
+            }
+            case "COUNT":
+              let id = data[1];
+              let payload = data[2];
+              if (openSubs[id]) {
+                ;
+                (subListeners[id]?.count || []).forEach((cb) => cb(payload));
+              }
+              return;
+            case "EOSE": {
+              let id2 = data[1];
+              if (id2 in subListeners) {
+                subListeners[id2].eose.forEach((cb) => cb());
+                subListeners[id2].eose = [];
+              }
+              return;
+            }
+            case "OK": {
+              let id2 = data[1];
+              let ok = data[2];
+              let reason = data[3] || "";
+              if (id2 in pubListeners) {
+                if (ok)
+                  pubListeners[id2].ok.forEach((cb) => cb());
+                else
+                  pubListeners[id2].failed.forEach((cb) => cb(reason));
+                pubListeners[id2].ok = [];
+                pubListeners[id2].failed = [];
+              }
+              return;
+            }
+            case "NOTICE":
+              let notice = data[1];
+              listeners.notice.forEach((cb) => cb(notice));
+              return;
+            case "AUTH": {
+              let challenge2 = data[1];
+              listeners.auth?.forEach((cb) => cb(challenge2));
+              return;
+            }
+          }
+        } catch (err) {
+          return;
+        }
+      }
+    });
+    return connectionPromise;
+  }
+  function connected() {
+    return ws?.readyState === 1;
+  }
+  async function connect() {
+    if (connected())
+      return;
+    await connectRelay();
+  }
+  async function trySend(params) {
+    let msg = JSON.stringify(params);
+    if (!connected()) {
+      await new Promise((resolve) => setTimeout(resolve, 1e3));
+      if (!connected()) {
+        return;
+      }
+    }
+    try {
+      ws.send(msg);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  const sub = (filters, {
+    verb = "REQ",
+    skipVerification = false,
+    alreadyHaveEvent = null,
+    id = Math.random().toString().slice(2)
+  } = {}) => {
+    let subid = id;
+    openSubs[subid] = {
+      id: subid,
+      filters,
+      skipVerification,
+      alreadyHaveEvent
+    };
+    trySend([verb, subid, ...filters]);
+    return {
+      sub: (newFilters, newOpts = {}) => sub(newFilters || filters, {
+        skipVerification: newOpts.skipVerification || skipVerification,
+        alreadyHaveEvent: newOpts.alreadyHaveEvent || alreadyHaveEvent,
+        id: subid
+      }),
+      unsub: () => {
+        delete openSubs[subid];
+        delete subListeners[subid];
+        trySend(["CLOSE", subid]);
+      },
+      on: (type, cb) => {
+        subListeners[subid] = subListeners[subid] || {
+          event: [],
+          count: [],
+          eose: []
+        };
+        subListeners[subid][type].push(cb);
+      },
+      off: (type, cb) => {
+        let listeners2 = subListeners[subid];
+        let idx = listeners2[type].indexOf(cb);
+        if (idx >= 0)
+          listeners2[type].splice(idx, 1);
+      }
+    };
+  };
+  function _publishEvent(event, type) {
+    if (!event.id)
+      throw new Error(`event ${event} has no id`);
+    let id = event.id;
+    trySend([type, event]);
+    return {
+      on: (type2, cb) => {
+        pubListeners[id] = pubListeners[id] || {
+          ok: [],
+          failed: []
+        };
+        pubListeners[id][type2].push(cb);
+      },
+      off: (type2, cb) => {
+        let listeners2 = pubListeners[id];
+        if (!listeners2)
+          return;
+        let idx = listeners2[type2].indexOf(cb);
+        if (idx >= 0)
+          listeners2[type2].splice(idx, 1);
+      }
+    };
+  }
+  return {
+    url,
+    sub,
+    on: (type, cb) => {
+      listeners[type].push(cb);
+      if (type === "connect" && ws?.readyState === 1) {
+        ;
+        cb();
+      }
+    },
+    off: (type, cb) => {
+      let index = listeners[type].indexOf(cb);
+      if (index !== -1)
+        listeners[type].splice(index, 1);
+    },
+    list: (filters, opts) => new Promise((resolve) => {
+      let s = sub(filters, opts);
+      let events = [];
+      let timeout = setTimeout(() => {
+        s.unsub();
+        resolve(events);
+      }, listTimeout);
+      s.on("eose", () => {
+        s.unsub();
+        clearTimeout(timeout);
+        resolve(events);
+      });
+      s.on("event", (event) => {
+        events.push(event);
+      });
+    }),
+    get: (filter, opts) => new Promise((resolve) => {
+      let s = sub([filter], opts);
+      let timeout = setTimeout(() => {
+        s.unsub();
+        resolve(null);
+      }, getTimeout);
+      s.on("event", (event) => {
+        s.unsub();
+        clearTimeout(timeout);
+        resolve(event);
+      });
+    }),
+    count: (filters) => new Promise((resolve) => {
+      let s = sub(filters, { ...sub, verb: "COUNT" });
+      let timeout = setTimeout(() => {
+        s.unsub();
+        resolve(null);
+      }, countTimeout);
+      s.on("count", (event) => {
+        s.unsub();
+        clearTimeout(timeout);
+        resolve(event);
+      });
+    }),
+    publish(event) {
+      return _publishEvent(event, "EVENT");
+    },
+    auth(event) {
+      return _publishEvent(event, "AUTH");
+    },
+    connect,
+    close() {
+      listeners = newListeners();
+      subListeners = {};
+      pubListeners = {};
+      if (ws.readyState === WebSocket.OPEN) {
+        ws?.close();
+      }
+    },
+    get status() {
+      return ws?.readyState ?? 3;
+    }
+  };
+}
+var SimplePool = class {
+  _conn;
+  _seenOn = {};
+  eoseSubTimeout;
+  getTimeout;
+  constructor(options = {}) {
+    this._conn = {};
+    this.eoseSubTimeout = options.eoseSubTimeout || 3400;
+    this.getTimeout = options.getTimeout || 3400;
+  }
+  close(relays2) {
+    relays2.forEach((url) => {
+      let relay = this._conn[normalizeURL(url)];
+      if (relay)
+        relay.close();
+    });
+  }
+  async ensureRelay(url) {
+    const nm = normalizeURL(url);
+    if (!this._conn[nm]) {
+      this._conn[nm] = relayInit(nm, {
+        getTimeout: this.getTimeout * 0.9,
+        listTimeout: this.getTimeout * 0.9
+      });
+    }
+    const relay = this._conn[nm];
+    await relay.connect();
+    return relay;
+  }
+  sub(relays2, filters, opts) {
+    let _knownIds = /* @__PURE__ */ new Set();
+    let modifiedOpts = { ...opts || {} };
+    modifiedOpts.alreadyHaveEvent = (id, url) => {
+      if (opts?.alreadyHaveEvent?.(id, url)) {
+        return true;
+      }
+      let set = this._seenOn[id] || /* @__PURE__ */ new Set();
+      set.add(url);
+      this._seenOn[id] = set;
+      return _knownIds.has(id);
+    };
+    let subs = [];
+    let eventListeners = /* @__PURE__ */ new Set();
+    let eoseListeners = /* @__PURE__ */ new Set();
+    let eosesMissing = relays2.length;
+    let eoseSent = false;
+    let eoseTimeout = setTimeout(() => {
+      eoseSent = true;
+      for (let cb of eoseListeners.values())
+        cb();
+    }, this.eoseSubTimeout);
+    relays2.forEach(async (relay) => {
+      let r;
+      try {
+        r = await this.ensureRelay(relay);
+      } catch (err) {
+        handleEose();
+        return;
+      }
+      if (!r)
+        return;
+      let s = r.sub(filters, modifiedOpts);
+      s.on("event", (event) => {
+        _knownIds.add(event.id);
+        for (let cb of eventListeners.values())
+          cb(event);
+      });
+      s.on("eose", () => {
+        if (eoseSent)
+          return;
+        handleEose();
+      });
+      subs.push(s);
+      function handleEose() {
+        eosesMissing--;
+        if (eosesMissing === 0) {
+          clearTimeout(eoseTimeout);
+          for (let cb of eoseListeners.values())
+            cb();
+        }
+      }
+    });
+    let greaterSub = {
+      sub(filters2, opts2) {
+        subs.forEach((sub) => sub.sub(filters2, opts2));
+        return greaterSub;
+      },
+      unsub() {
+        subs.forEach((sub) => sub.unsub());
+      },
+      on(type, cb) {
+        if (type === "event") {
+          eventListeners.add(cb);
+        } else if (type === "eose") {
+          eoseListeners.add(cb);
+        }
+      },
+      off(type, cb) {
+        if (type === "event") {
+          eventListeners.delete(cb);
+        } else if (type === "eose")
+          eoseListeners.delete(cb);
+      }
+    };
+    return greaterSub;
+  }
+  get(relays2, filter, opts) {
+    return new Promise((resolve) => {
+      let sub = this.sub(relays2, [filter], opts);
+      let timeout = setTimeout(() => {
+        sub.unsub();
+        resolve(null);
+      }, this.getTimeout);
+      sub.on("event", (event) => {
+        resolve(event);
+        clearTimeout(timeout);
+        sub.unsub();
+      });
+    });
+  }
+  list(relays2, filters, opts) {
+    return new Promise((resolve) => {
+      let events = [];
+      let sub = this.sub(relays2, filters, opts);
+      sub.on("event", (event) => {
+        events.push(event);
+      });
+      sub.on("eose", () => {
+        sub.unsub();
+        resolve(events);
+      });
+    });
+  }
+  publish(relays2, event) {
+    const pubPromises = relays2.map(async (relay) => {
+      let r;
+      try {
+        r = await this.ensureRelay(relay);
+        return r.publish(event);
+      } catch (_) {
+        return { on() {
+        }, off() {
+        } };
+      }
+    });
+    const callbackMap = /* @__PURE__ */ new Map();
+    return {
+      on(type, cb) {
+        relays2.forEach(async (relay, i) => {
+          let pub = await pubPromises[i];
+          let callback = () => cb(relay);
+          callbackMap.set(cb, callback);
+          pub.on(type, callback);
+        });
+      },
+      off(type, cb) {
+        relays2.forEach(async (_, i) => {
+          let callback = callbackMap.get(cb);
+          if (callback) {
+            let pub = await pubPromises[i];
+            pub.off(type, callback);
+          }
+        });
+      }
+    };
+  }
+  seenOn(id) {
+    return Array.from(this._seenOn[id]?.values?.() || []);
+  }
+};
 var nip19_exports = {};
 __export2(nip19_exports, {
   decode: () => decode,
@@ -9323,10 +9815,10 @@ async function queryProfile(fullname) {
   if (!res?.names?.[name])
     return null;
   let pubkey = res.names[name];
-  let relays = res.relays?.[pubkey] || [];
+  let relays2 = res.relays?.[pubkey] || [];
   return {
     pubkey,
-    relays
+    relays: relays2
   };
 }
 var nip06_exports = {};
@@ -9632,7 +10124,7 @@ function makeZapRequest({
   profile,
   event,
   amount,
-  relays,
+  relays: relays2,
   comment = ""
 }) {
   if (!amount)
@@ -9646,7 +10138,7 @@ function makeZapRequest({
     tags: [
       ["p", profile],
       ["amount", amount.toString()],
-      ["relays", ...relays]
+      ["relays", ...relays2]
     ]
   };
   if (event) {
@@ -9673,8 +10165,8 @@ function validateZapRequest(zapRequestString) {
   let e = zapRequest.tags.find(([t, v]) => t === "e" && v);
   if (e && !e[1].match(/^[a-f0-9]{64}$/))
     return "Zap request 'e' tag is not valid hex.";
-  let relays = zapRequest.tags.find(([t, v]) => t === "relays" && v);
-  if (!relays)
+  let relays2 = zapRequest.tags.find(([t, v]) => t === "relays" && v);
+  if (!relays2)
     return "Zap request doesn't have a 'relays' tag.";
   return null;
 }
@@ -9711,6 +10203,11 @@ var elForm;
 var isMining = false;
 var secret = null;
 var player = null;
+var pool = null;
+var relays = ["wss://nos.lol"];
+function initPool() {
+  pool = new SimplePool();
+}
 function setMiningState(state) {
   const elBtn = document.getElementById("btn-generate");
   isMining = state;
@@ -9735,16 +10232,16 @@ async function generate(event) {
     const lat = parseFloat(fd.get("lat"));
     const lon = parseFloat(fd.get("lon"));
     const burn = !!fd.get("pow");
-    const bits = burn ? parseInt(fd.get("bits")) : 5;
+    const bits = burn ? parseInt(fd.get("bits")) : 8;
     const mute = !!fd.get("music");
     const location = latlon_geohash_default.encode(lat, lon, 6);
     console.log("Generating", age, sex, location, mute);
     secret = null;
     const start = performance.now();
     let keysTested = 0;
-    const testCount = 1e3;
+    const testCount = burn ? 1e3 : 100;
     if (!mute)
-      await initSound();
+      await initSound(burn ? 24e3 : 48e3);
     setMiningState(true);
     const rollLoop = () => setTimeout(() => {
       if (!secret && isMining) {
@@ -9787,31 +10284,89 @@ async function fetchLocation(event) {
   document.getElementById("lat").value = res.coords.latitude.toFixed(5);
   document.getElementById("lon").value = res.coords.longitude.toFixed(5);
 }
+var ageSpans = ["16+", "24+", "32+", "48+"];
 function decodePublicKey(event) {
   if (event)
     event.preventDefault();
-  const portraits = ["\u{1F469}", "\u{1F468}", "\u{1F308}", "\u{1F916}"];
-  const ageSpans = ["16+", "24+", "32+", "42+"];
-  const { value } = document.getElementById("inp-pk");
+  let { value } = document.getElementById("inp-pk");
   if (!value.length)
     return;
-  const isHex = /^[a-fA-F0-9]+$/;
-  let ASL = null;
-  if (!isHex.test(value)) {
-    const { type, data } = nip19_exports.decode(value);
-    if (type !== "npub")
-      throw new Error(`Invalid type: ${type}`);
-    ASL = decodeASL(data);
-  } else {
-    ASL = decodeASL(value);
-  }
+  if (!/^[a-fA-F0-9]+$/.test(value))
+    value = nip19_exports.decode(value).data;
+  const ASL = decodeASL(value);
   const { lat, lon } = latlon_geohash_default.decode(ASL.location);
-  console.log("ASL", ASL);
-  document.getElementById("outPortrait").innerText = portraits[ASL.sex];
+  document.getElementById("outPortrait").innerText = emoOf(ASL.sex, ASL.age);
   document.getElementById("outAge").innerText = ageSpans[ASL.age];
   document.getElementById("outLocation").href = `https://www.openstreetmap.org/search?query=${lat},${lon}`;
   document.getElementById("outLocation").innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`;
   document.getElementById("outFlag").innerText = flagOf(ASL.location);
+  document.getElementById("text-share").value = mkPopaganda(value);
+}
+function emoOf(sex, age = 1) {
+  return [
+    ["\u{1F467}", "\u{1F466}", "\u{1F9D2}", "\u{1F50B}"],
+    ["\u{1F469}", "\u{1F468}", "\u{1F9D1}", "\u{1F916}"],
+    ["\u{1F475}", "\u{1F474}", "\u{1F9D3}", "\u{1F4DF}"],
+    ["\u{1F483}", "\u{1F57A}", "\u{1F308}", "\u{1F4BE}"]
+  ][age][sex];
+}
+function mkPopaganda(pk) {
+  let ft = "Banner";
+  let emo = "Lizard Emoji";
+  let at = "lvl24";
+  if (pk) {
+    if (!/^[a-fA-F0-9]+$/.test(pk))
+      pk = nip19_exports.decode(pk).data;
+    const { age, sex, location } = decodeASL(pk);
+    ft = flagOf(location);
+    emo = emoOf(sex, age);
+    at = ageSpans[age];
+  }
+  return `I decoded my public key and it turned out like this:
+
+${ft} ${emo} ${at}.
+
+Should I #reroll ?
+https://telamon.github.io/powmem/demo.html`;
+}
+async function shareDecode(ev) {
+  if (ev)
+    ev.preventDefault();
+  const NIP07 = "nip07";
+  const LOCAL = "local";
+  const mode = secret ? LOCAL : window.nostr ? NIP07 : void 0;
+  if (!mode)
+    return window.alert("Generate a key first");
+  let pk = null;
+  if (mode === LOCAL)
+    pk = bytesToHex2(schnorr.getPublicKey(secret));
+  else if (mode === NIP07)
+    pk = await window.nostr.getPublicKey();
+  if (!pk)
+    return window.alert("Generate a key or press accept in your NIP-07 extension");
+  console.info("Post using key", pk);
+  const tarea = document.getElementById("text-share");
+  tarea.disabled = true;
+  document.getElementById("btn-share").disabled = true;
+  const asl = decodeASL(pk);
+  const tTags = [
+    ["t", "reroll"],
+    ["t", "powmem"],
+    ["t", "decentralize"]
+  ];
+  const gTags = ["g", asl.location];
+  const event = {
+    kind: 1,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1e3),
+    tags: [gTags, ...tTags],
+    content: tarea.value
+  };
+  event.id = getEventHash(event);
+  event.sig = mode === LOCAL ? signEvent(event, secret) : await window.nostr.signEvent(event);
+  initPool();
+  const pubs = pool.publish(relays, event);
+  pubs.on("ok", (ev2) => console.info('Relay "OK": Post Accepted', ev2));
 }
 function boot() {
   console.log("initializing...");
@@ -9819,6 +10374,7 @@ function boot() {
   elForm.onsubmit = generate;
   document.getElementById("btn-geo").addEventListener("click", fetchLocation);
   document.getElementById("btn-nip07").addEventListener("click", nip07reveal);
+  document.getElementById("btn-share").addEventListener("click", shareDecode);
   const pkInput = document.getElementById("inp-pk");
   pkInput.addEventListener("change", decodePublicKey);
   pkInput.addEventListener("keyup", decodePublicKey);
@@ -9830,14 +10386,15 @@ function boot() {
     else
       player.pause();
   });
+  document.getElementById("text-share").value = mkPopaganda();
 }
 document.addEventListener("DOMContentLoaded", boot);
-async function initSound() {
+async function initSound(sampleRate) {
   if (!player) {
     const res = await fetch("dubmood_-_finland_sux.xm");
     const ab = await res.arrayBuffer();
     await ModPlayer.wasmLoaded();
-    player = new ModPlayer(24e3, 4096 << 1);
+    player = new ModPlayer(sampleRate, 4096 << 1);
     await player.loadModule(new Uint8Array(ab));
     player.setupSources();
   }

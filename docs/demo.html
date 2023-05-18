@@ -51,7 +51,7 @@
     #usp dd { margin-bottom: 2em; }
 
     #bitviz { text-align: center; }
-    #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; }
+    #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; text-shadow: 1px -2px 2px #9ff522; }
     #bitviz .ag code { color: #d2f8fc; background-color: #5A6166; box-shadow: 0 0 5px #a3d4ff87; }
     #bitviz .cu code { color: orange; background-color: #775009; }
 
@@ -61,16 +61,21 @@
       font-size: 5em;
     }
     #secret { text-align: center; }
-    body { background-color: #11191f; }
+    [data-theme="dark"] { background-color: #11191f; }
+    footer {
+      padding-top: 2em;
+      text-align: center;
+      color: var(--secondary);
+    }
   </style>
 </head>
-<body data-theme="dark">
+<body>
   <main class="container">
     <h1>
       <a href="https://github.com/telamon/pops/blob/master/POP-0101.md">
         <code>POP-0101</code>
       </a>
-      <br/>Proof of Work Memory
+      <br/>PoW Memory
     </h1>
     <section>
       <h2 id="bitviz">
@@ -78,10 +83,10 @@
         <span class="ag"><code>0</code> <code>1</code></span>
         <span class="cu">
           <code style="opacity: 1;">1</code>
-          <code style="opacity: 0.9;">1</code> <code style="opacity: 0.8;">0</code>
-          <code style="opacity: 0.7;">1</code> <code style="opacity: 0.6;">1</code>
-          <code style="opacity: 0.5;">0</code> <code style="opacity: 0.4;">0</code>
-          <code style="opacity: 0.3;">0</code>
+          <code style="opacity: 0.8;">0</code>
+          <code style="opacity: 0.6;">1</code>
+          <code style="opacity: 0.4;">1</code>
+          <code style="opacity: 0.2;">0</code>
         </span>
       </h2>
     </section>
@@ -105,9 +110,9 @@
       </dd>
       <dt>Localize relays (nostr)</dt>
       <dd>
-        Create incentive for local actors to run relays so that<br/>
+        Create incentive for local actors to run relays so that
         relays appealing more to some audiences and less to others emerge.<br/>
-        Importing translators of culture is vital to sustain network growth.✌️
+        Importing translators of culture is vital for sustained network growth.✌️
         <!-- More nodes, more resources, more transactions, less centralization. -->
       </dd>
     </dl>
@@ -121,7 +126,7 @@
           <option value="0">16+</option>
           <option value="1">24+</option>
           <option value="2">32+</option>
-          <option value="3">42+</option>
+          <option value="3">48+</option>
         </select>
 
         <label for="sex">Gender</label>
@@ -161,7 +166,7 @@
         </label>
         <label for="switch" title="Switch off, lean back, enjoy.">
           <input type="checkbox" id="pow-switch" name="pow" role="switch" checked />
-          🔥🌳🔥
+          🔥🌳
         </label>
         <br/>
         <button id="btn-generate" type="submit">Generate</button>
@@ -172,8 +177,8 @@
       </footer>
     </article>
 
-    <section id="decode">
-      <h2>Decoder</h2>
+    <article id="decode" type="card" data-theme="light">
+      <header><h2 style="margin-bottom: 0;">Decoder</h2></header>
       <div class="grid">
         <div><input id="inp-pk" type="text" placeholder="Paste public key here"/></div>
         <div><button id="btn-nip07"class="secondary outline" style="max-width: 10em">NIP-07 reveal 🎉</button></div>
@@ -185,17 +190,13 @@
           <span id="outAge">24</span>
         </div>
         <a href="#" id="outLocation">OCEANIA</a>
-        <br/>
-        <br/>
-        <a href="#" role="button">Share</a>
-        <!-- TODO: create a post using nostr-tools containing something like:
-        <p id="post-body">
-          I decoded my powmem identity and it turned out like this: Flag Lizard-Emoji lv24+.
-          Should I #reroll ?
-          https://telamon.github.io/powmem/demo.html
-        </p>-->
       </div>
-    </section>
+      <br/>
+      <br/>
+      <h3>Share</h3>
+      <textarea id="text-share" style="width: 100%; min-height: 11em;"></textarea>
+      <button id="btn-share" role="button">post</button>
+    </article>
 
     <section>
       <!-- TODO: copy/move to README.md -->
@@ -204,12 +205,12 @@
       <pre><code>$ npm i powmem latlon-geohash</code></pre>
       <h5>What you get</h5>
       <dl>
-        <dt><strong>powmem</strong></dt>
-        <dd>Provides <code>decodeASL()</code> and <code>roll()</code> functions<dd>
-        <dt><strong>latlon-geohash</strong></dt>
+        <dt>powmem</dt>
+        <dd>Provides <code>decodeASL(key)</code> and <code>roll(a, s, l)</code> functions<dd>
+        <dt>latlon-geohash</dt>
         <dd>Transcoder between Latitude + Longitude pair and Geohash</dd>
-        <dt><strong>geolib</strong><dt>
-        <dd>Contains helpers to calculate distance using metric the system</dd>
+        <!--<dt><strong>geolib</strong><dt>
+        <dd>Contains helpers to calculate distance using metric the system</dd>-->
       </dl>
 
       <h5>Decode</h5>
@@ -217,9 +218,9 @@
       <pre><code>import { decodeASL, flagOf } from 'powmem'
 import Geohash from 'latlon-geohash'
 
-const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
+const key = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
 
-const { age, sex, location } = decodeASL(npub)
+const { age, sex, location } = decodeASL(key)
 
 console.log('Age:', age)
 console.log('Sex:', sex)
@@ -232,7 +233,24 @@ Sex: 0
 Country: 🇲🇫
 Coordinates: { lat: -75.2, lon: 10.5 }</code></pre>
     </section>
+
+    <section>
+      <h2>World Map</h2>
+      <small>Not Implemented, need math help</small>
+      <p>
+        Listing posts tagged with <code>#reroll</code> and <code>#powmem</code>.
+      </p>
+      <div>
+        <img src="https://simplemaps.com/static/demos/resources/svg-library/svgs/world.svg"/>
+      </div>
+    </section>
+
   </main>
+  <footer data-theme="dark">
+    <img src="https://raw.githubusercontent.com/decentlabs-north/whiteboard/master/iterate.svg"/><br/>
+    Crafted with care by the Citizens of the Angular Structure (DLabs)<br/>
+    2023 All wrongs reversed
+  </footer>
   <script type="text/javascript" src="libxm.js"></script><!-- Creds: https://github.com/Artefact2/libxm.js/ -->
   <script type="module" src="./demo.build.js"></script>
 </body>
