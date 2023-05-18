@@ -45,7 +45,8 @@
 
     h1 { text-align: center; }
     h1 code { font-size: 1.75em; color: var(--primary); }
-    #usp dt { font-size: 1.25em; font-weight: bold; color: var(--secondary); }
+    #usp dt { font-size: 1.45em; font-weight: 200; color: var(--secondary); }
+    #usp dd { margin-bottom: 2em; }
 
     #bitviz { text-align: center; }
     #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; }
@@ -66,12 +67,12 @@
       <a href="https://github.com/telamon/pops/blob/master/POP-0101.md">
         <code>POP-0101</code>
       </a>
-      <br/>Holistic Work Memory
+      <br/>Proof of Work Memory
     </h1>
     <section>
       <h2 id="bitviz">
         <span class="au"><code>1</code> <code>0</code></span>
-        <span class="ag"><code>1</code> <code>0</code></span>
+        <span class="ag"><code>0</code> <code>1</code></span>
         <span class="cu">
           <code style="opacity: 1;">1</code>
           <code style="opacity: 0.9;">1</code> <code style="opacity: 0.8;">0</code>
@@ -87,23 +88,24 @@
       <dt>Make PoW slightly sustainable</dt>
       <!-- PoW is the very definition of waste -->
       <dd>
-        This is a Schnorr key generator based on a spec
+        This is a key generator based on a spec
         that encodes ASL into the first 19-bits of your public key.<br/>
         It uses the same mechanics as Proof of Work but burns data instead of burning zeros.<br/>
+        PoW is bad, but this way it only has to be done once.<br/>
       </dd>
-      <dt>True Decentralized Taxonomy</dt>
+      <dt>Decentralized Taxonomy</dt>
       <dd>
-        By redistributing the data across popular metrics.<br/>
-        We can holistically sort the hashspace,
-        letting clients attract other clients with similar interests.<br/>
-        Forming natural clusters.
+        Sort the hashspace holistically by redistributing data across popular metrics.<br/>
+        Let clients attract other clients with similar interests
+        and form natural clusters.
+        Users, set, their own, bits.
       </dd>
       <dt>Localize relays</dt>
       <dd>
-        The big global relays are not bad yet, we need them.
-        But we also need many more local actors to translate and import culture.<br/>
-        So In order to relive the burden of event parsing and sustain network growth:
-        let relays that appeal more to some audiences and less to others emerge.<br/>
+        Create incentive for local actors to run relays.<br/>
+        Let relays that appeal more to some audiences and less to others emerge.<br/>
+        Import translators of culture, sustain network growth.
+        <!-- More nodes, more resources, more transactions, less centralization. -->
       </dd>
     </dl>
     <br/>
@@ -143,7 +145,7 @@
         </div>
         <details>
           <summary>Advanced options</summary>
-          <label for="bits">Accuracy (bits)</label>
+          <label for="bits">Geo accuracy (bits) default: 15</label>
           <input id="bits" name="bits" type="number" min="5" max="20" value="15"/>
         </details>
         <label for="switch">

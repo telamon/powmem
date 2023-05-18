@@ -5,7 +5,8 @@ import {
   packGeo,
   roll,
   unpackGeo,
-  flagOf
+  flagOf,
+  binstr
 } from './index.js'
 import Geohash from 'latlon-geohash'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -36,20 +37,47 @@ test('Geohash bitpacking', async t => {
   t.equal(unpackGeo(packGeo('u6282sv', 30), 18), 'u628')
 })
 
+test.only('Regression coord<->hash', async t => {
+  const ghash = 'gcnenk' // taken from geohash.co
+  const coord = [51.17706299, -1.82922363] // taken from OSM
+  const x = Geohash.decode(ghash, 6)
+  t.equal(coord[0].toFixed(2), x.lat.toFixed(2), 'Geohash.decode().lat')
+  t.equal(coord[1].toFixed(2), x.lon.toFixed(2), 'Geohash.decode().lon')
+
+  const h = Geohash.encode(...coord, 6)
+  t.equal(h, ghash, 'Geohash.encode()')
+
+  const n = packGeo(h, 6 * 5)
+  const d = unpackGeo(n, 6 * 5)
+  t.equal(d, h, 'unpackGeo(h, 30)')
+
+  const p = Geohash.decode(d)
+  t.equal(coord[0].toFixed(2), p.lat.toFixed(2), 'Same Latitude')
+  t.equal(coord[1].toFixed(2), p.lon.toFixed(2), 'Same Longitude')
+
+  const n2 = packGeo(h, 6 * 3)
+  console.log('N0  ', binstr(n))
+  console.log('N2  ', binstr(n2))
+
+  const d2 = unpackGeo(n2, 6 * 3)
+  t.equal(d2, h, 'unpackGeo(h, 18)')
+})
+
+// Ignore this test. One-shot csv->json cleanup thing.
 test.skip('ChatGPT provided flag->location LUT', async t => {
   const data = readFileSync('flags.csv').toString()
   const lines = data.split('\n').map(line => {
-    const [flag, lat, lon] = line.split(',')
+    const [flag, lon, lat] = line.split(',') // Flipped for some reason?
     if (!flag || !lat || !lon) return undefined
     const hash = Geohash.encode(parseFloat(lat), parseFloat(lon))
     return [flag, hash] // packGeo(hash, 40)]
   })
-  const table = JSON.stringify(lines.filter(x => x).reduce((m, [k, v]) => (m[k] = v, m), {}))
-  writeFileSync('flags.js', table)
-  debugger
+  const table = lines.filter(x => x)
+    .map(fh => fh.join(':')).join('|')
+  writeFileSync('flags.db', table) // 4KB Addressbook
 })
 
-test.only('Picks closest flag using XOR distance', async t => {
+test('Picks closest flag using XOR distance', async t => {
   const flag = flagOf('u6282sv')
   t.equal(flag, 'bkb')
 })

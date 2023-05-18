@@ -58,8 +58,8 @@ function generate (event) {
       if (!secret && isMining) rollLoop()
       else {
         if (secret) {
-          document.getElementById('secret').innerText = nip19.nsecEncode(secret)
-          document.getElementById('inp-pk').value = nip19.npubEncode(bytesToHex(schnorr.getPublicKey(secret)))
+          document.getElementById('secret').innerText = 'SECRET KEY:\n' + secret + '\n---\n' + nip19.nsecEncode(secret)
+          document.getElementById('inp-pk').value = bytesToHex(schnorr.getPublicKey(secret))
           decodePublicKey()
         }
         setMiningState(false)

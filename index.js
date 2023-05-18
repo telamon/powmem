@@ -23,7 +23,7 @@ export const SANE_DEFAULT = 15 // Somewhat sane
  */
 export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500000) {
   const nbits = geobits + 4
-  const buf = new Uint8Array(roundByte(nbits))
+  const buf = new Uint8Array(byteIdx(nbits))
   const prefix = packGeo(location, geobits, buf)
   shift(prefix, sex & 0b10)
   shift(prefix, sex & 1)
@@ -32,8 +32,7 @@ export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500
   const mask = nbits % 8
     ? (1 << (nbits % 8)) - 1
     : 0xff
-  console.info('Searching for', nbits, binstr(prefix), 'mask', mask.toString(2))
-  // const max = 500000 // ~10second on my laptop
+  // console.info('Searching for', nbits, binstr(prefix), 'mask', mask.toString(2))
   const nBytes = prefix.length
   for (let i = 0; i < maxTries; i++) {
     const sk = schnorr.utils.randomPrivateKey()
@@ -44,12 +43,7 @@ export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500
         ? (pk[n] & mask) === (prefix[n] & mask)
         : v = pk[n] === prefix[n]
     }
-    if (v) {
-      console.log('PFX', binstr(prefix))
-      console.log('KEY', binstr(pk))
-      console.log('key found', bytesToHex(sk))
-      return bytesToHex(sk)
-    }
+    if (v) return bytesToHex(sk)
   }
 }
 
@@ -74,22 +68,25 @@ export function decodeASL (publicKey, geobits = SANE_DEFAULT) {
  * @returns {string} A geohash
  */
 export function unpackGeo (buf, nBits = SANE_DEFAULT) {
-  const nBytes = roundByte(nBits)
+  const nBytes = byteIdx(nBits) + 1
   if (buf.length < nBytes) throw new Error('BufferUnderflow, dst buffer too small')
   const cpy = []
   for (let i = 0; i < nBytes; i++) cpy[i] = buf[i]
   let str = ''
-  let tmp = 0
+  let tmp = [0]
   for (let n = 0; n < nBits; n++) {
-    const bit = unshift(cpy)
-    tmp = tmp | bit << (4 - (n % 5))
     if (n && !(n % 5)) {
-      str += GHM.charAt(tmp)
-      tmp = 0
+      str += GHM.charAt(tmp[0])
+      console.log('>>> Decoding', GHM.charAt(tmp[0]), tmp[0], binstr(tmp[0]))
+      tmp = [0]
     }
+    shift(tmp, unshift(cpy))
+    //const bit = unshift(cpy)
+    //tmp = tmp | bit << (4 - (n % 5))
   }
-  str += GHM.charAt(tmp)
-  return str
+  str += GHM.charAt(tmp[0])
+  console.log('>>> Decoding', GHM.charAt(tmp[0]), tmp[0], binstr(tmp[0]))
+  return str.replace(/0+$/, '')
 }
 
 /**
@@ -104,27 +101,39 @@ ashes
  * @param {Uint8Array|Buffer|Array} destination buffer
  * @returns {Uint8Array} buffer containing binary geohash
  */
-export function packGeo (str, nBits = SANE_DEFAULT, buf = undefined) {
-  if (!nBits) nBits = Math.min(str.length * 5, 12)
+// CODE  01101 11111 11000 00100 00010
+// LON   0 1 1  1 1  1 0 0  0 0  0 0 0
+// LAT    1 0  1 1 1  1 0  0 1 0  0 1
+export function packGeo (hash, nBits = SANE_DEFAULT, buf = undefined) {
+  nBits = Math.min(hash.length * 5, nBits)
   if (nBits < 5) throw new Error('precision has to be at least 5')
-  const nBytes = roundByte(nBits)
+  const nBytes = byteIdx(nBits) + 1
   if (!buf) buf = new Uint8Array(nBytes)
-  const val = str
-    .split('')
-    .reverse()
-    .reduce((sum, c, b) => sum + (GHU[c] * (32 ** b)), 0)
-  const bits = val.toString(2).slice(0, nBits).split('').reverse() // lsb
-  for (const bit of bits) { // buf.writeUInt32BE(bits)
-    shift(buf, bit === '0' ? 0 : 1) // msb
+  let w = 0
+  const tail = nBytes // Begin with least significant byte
+  for (let i = tail; i > -1 && w <= nBits; i--) {
+    const bits = [GHU[hash[i]]]
+    let x = 5
+    /*
+    if (i === tail && nBits % 5) { // Align on first run
+      x = nBits % 5
+      // for (let j = 0; j < 5 - (nBits % 5); j++) unshift(bits)
+    }*/
+    console.log('<<<Encoding', hash[i], bits[0], binstr(bits[0]))
+    for (let j = 0; j < x; j++) {
+      shift(buf, unshift(bits)) // push-back least significant bit
+      if (++w >= nBits) break
+    }
   }
   return buf
 }
 
 /*
- * Round bits upwards to closet byte
- * @type {(b: number) => number}
+ * Converts Bit-index to Byte-index
+ * @param {number} Bit index
+ * @returns {number} The byte index of bit index
  */
-export function roundByte (b) { return (b >> 3) + (b % 8 ? 1 : 0) }
+export function byteIdx (b) { return (b >> 3) + (b % 8 ? 1 : 0) }
 
 /**
  * Treats buffer as a series of latched 8bit shift-registers
@@ -160,46 +169,33 @@ export function unshift (x, inp = 0) {
   return c ? 1 : 0
 }
 
-function binstr (x, cap, bs = true) {
+export function binstr (x, cap, bs = 5) {
+  if (typeof x === 'number') x = [x]
   cap = cap || x.length * 8
   let str = ''
   for (let i = 0; i < x.length; i++) {
     for (let j = 0; j < 8; j++) {
       if (cap === i * 8 + j) str += '|'
       str += x[i] & (1 << j) ? '1' : '0'
+      if (i * 8 + j !== 0 && !((i * 8 + j) % bs)) str += ' '
     }
-    if (bs) str += ' '
   }
   return str
 }
 
-let FLAGS = null
-function buildFlagLUT () {
-  if (FLAGS) return FLAGS
-  const data = JSON.parse(FLJSON) // TODO: THEY're WRONG! Lon lat is swapped!!!!!!
-  FLAGS = {}
-  for (const f in data) {
-    FLAGS[f] = packGeo(data[f], 40)
-  }
-  return FLAGS
-}
-
+/**
+ * Calculates XOR-Distance between two buffers
+ * @param {Uint8Array|Buffer|Array} a Buffer A
+ * @param {Uint8Array|Buffer|Array} B Buffer B
+ * @returns {number} Distance
+ */
 export function xorDistance (a, b) {
-  /* // TODO: dosen't work :'(
-  let d = 0
-  const n = Math.min(a.length, b.length, 4)
-  for (let i = 0; i < n; i++) {
-    d |= (a[i] ^ b[i]) << (i * 8)
-  }
-  */
-  // TODO: try inefficient way of shift(out, unshift(a) ^ unshift(b))
+  // TODO: can be done without unshift(a) ^ unshift(b) and DataView
+  // TODO: this function is full of glitches, needs regression testing.
   const out = new Uint8Array(4)
   const ac = Array.from(new Array(4)).map((_, i) => a[i] || 0)
   const bc = Array.from(new Array(4)).map((_, i) => b[i] || 0)
-  console.log('A', binstr(ac))
-  console.log('B', binstr(bc))
   for (let i = 0; i < 4 * 8; i++) shift(out, unshift(ac) ^ unshift(bc))
-  console.log('X', binstr(out), out)
   const dv = new DataView(out.buffer)
   return dv.getUint32(0, true)
 }
@@ -208,15 +204,28 @@ export function xorDistance (a, b) {
  * Returns nearest flag of geohash.
  * The coordinates were given by GPT.
  * @type {(geohash: string, bits: number) => string}
+ * @param {string} geohash A hashed location
+ * @param {number} [bits] Geohash bit precision
+ * @returns {string} Emoji Flag
  */
 export function flagOf (geohash, bits = SANE_DEFAULT) {
-  const flags = buildFlagLUT()
+  const flags = initLUT()
   const src = packGeo(geohash, bits)
-  const sorted = Object.keys(flags)
-    .map(f => [f, xorDistance(src, flags[f])])
+  const sorted = flags
+    .map(f => [f[0], xorDistance(src, f[1])])
     .sort((a, b) => a[1] - b[1])
-  console.log(sorted)
   return sorted[0][0]
 }
+
+let FLUT = null
+function initLUT () {
+  if (FLUT) return FLUT
+  FLUT = POI.split('|').map(p => {
+    const [flag, hash] = p.split(':')
+    return [flag, packGeo(hash, 40)]
+  })
+  return FLUT
+}
 // 'fun' ISO-3166 alternative kindly provided by ChatGPT
-const FLJSON = '{"🇦🇨":"7v6q74tdc4k0","🇦🇩":"sbq0xm01hs4d","🇦🇪":"u98dm48yjj6y","🇦🇫":"uu01hq1xq6g4","🇦🇬":"hmh0knr3ckne","🇦🇮":"hkucnweyfbb4","🇦🇱":"sgt68rwbv7se","🇦🇲":"ubh2pycqt8yr","🇦🇴":"eg0j9jf7n0mq","🇦🇶":"h00000000000","🇦🇷":"5jx7uefqe2gn","🇦🇸":"58jb5200j850","🇦🇹":"t4fm1hb0k3x3","🇦🇺":"grypbzgxzzcr","🇦🇼":"h78cuytt4g8b","🇦🇽":"t7dc33s8u8vv","🇦🇿":"ubuexw10uvjy","🇧🇦":"sgphx66s4xh7","🇧🇧":"hm3mk0rx8phb","🇧🇩":"uxbzvzfpupyr","🇧🇪":"t0u0v0hn3zev","🇧🇫":"kr8xn7xxj09v","🇧🇬":"sunkete","🇧🇭":"u8fx9jjhnph7","🇧🇮":"evmd5nxf1p4q","🇧🇯":"s0qt5v9dt0kj","🇧🇱":"hkgfscx92xbv","🇧🇲":"hsqzx5vc479s","🇧🇳":"upgpzpyxbpuz","🇧🇴":"5eukmr3b6f47","🇧🇶":"h7bete18pqex","🇧🇷":"5xkz2fv21j89","🇧🇸":"hd1z9wmmv7zp","🇧🇹":"uxge605hrmfe","🇧🇻":"t2e7hn4cep2t","🇧🇼":"es2h7vszunzs","🇧🇾":"thyhyhnm34cd","🇧🇿":"h2hnzptm9wq2","🇨🇦":"j4833edzvejj","🇨🇨":"g9z7gnn6cx74","🇨🇩":"egv5u153sg9m","🇨🇫":"s5k9wkwj1b17","🇨🇬":"efzf4c3gp1nu","🇨🇭":"t13637gbppup","🇨🇮":"kpj27w4my9x7","🇨🇰":"580bh8pbj00b","🇨🇱":"572nndv7vdr4","🇨🇲":"s449rtfh8fug","🇨🇳":"uzurupcrgrbp","🇨🇴":"h4g6e5tdwzy8","🇨🇵":"hmzxd9xrz5gd","🇨🇷":"h1p19vt7t6zb","🇨🇺":"h927mvwgcbvk","🇨🇻":"k7f9xyu18pu1","🇨🇼":"h78xsbv8h5z7","🇨🇽":"5ubw4r0k5s7m","🇨🇾":"svbypmdr23n1","🇨🇿":"t4ed5krf78zp","🇩🇪":"t4mk707cu9n7","🇩🇯":"sr8qt0dfbb9e","🇩🇰":"t4px6zypehvj","🇩🇲":"hm4fygbb95n9","🇩🇴":"h7t6476fv6q7","🇩🇿":"sbd5hr5m38e9","🇪🇨":"5fn9w76ecvyk","🇪🇪":"tk3sv67b1mqr","🇪🇬":"stt3ewm9jk82","🇪🇭":"sq6z9qv63sv0","🇪🇷":"sqfucrv718mh","🇪🇸":"kzkdztwxg9wk","🇪🇹":"snys2pehtcw4","🇪🇺":"t1dw7gxe1ugg","🇫🇮":"tks43p7f0h7e","🇫🇯":"gxgruzvrzzgx","🇫🇰":"585050j8n048","🇫🇲":"upvrbzzpvpbx","🇫🇴":"mqu08mszf55e","🇫🇷":"t06tru0q93c7","🇬🇦":"s40d433jxt40","🇬🇧":"mpuxk0f89mth","🇬🇩":"hm0dgeybwgj1","🇬🇪":"szvwv6240k3h","🇬🇫":"hndcc88xf906","🇬🇬":"mpe17mxu3vz5","🇬🇭":"kpgyzw06pst8","🇬🇮":"kz19w3kvj8ts","🇬🇱":"m86vxsp7gygg","🇬🇲":"km38cuvh1q82","🇬🇳":"knr0f6f1jq8z","🇬🇵":"hqe9f0ezccp4","🇬🇶":"s1c4mt4nf7m9","🇬🇷":"su5nbr6ywww4","🇬🇸":"6c3q1kjtf2s8","🇬🇹":"h250p0j0n0n8","🇬🇺":"urcxczvzfzux","🇬🇼":"km23ss7py0kd","🇬🇾":"hje2y854xw8b","🇭🇰":"urzzvxuxczyp","🇭🇲":"gxcpurczyxbp","🇭🇳":"h2dv3u5sd2eg","🇭🇷":"t48n6r0f6jm7","🇭🇹":"h7jkrxwkm020","🇭🇺":"t53u2f4vjq91","🇮🇨":"kthp7v12dn3u","🇮🇩":"gzgxfxyzurzp","🇮🇪":"mnvuqh25h7qp","🇮🇱":"swq86fkyxj3q","🇮🇲":"mpnw4hj92sxq","🇮🇳":"utsqthjdw58r","🇮🇴":"58jb50n2j8j8","🇮🇶":"sxzsqhe7k2mx","🇮🇷":"u9x13vt72bdf","🇮🇸":"mkn5qq0ejyyk","🇮🇹":"sfjz2zf4mvpt","🇯🇪":"mpdgzuhb68uk","🇯🇲":"h6kgh47n8m8r","🇯🇴":"swqsrrejju5x","🇯🇵":"uzcrupurcxup","🇰🇪":"eyx16x5p5gsm","🇰🇬":"uvm33du0h55w","🇰🇭":"urbzvzypfpcp","🇰🇮":"h00bn0p8pbn0","🇰🇲":"g8rw3v2bkqw1","🇰🇳":"hku6fdtp4e0m","🇰🇵":"uzuxvzyxgzcx","🇰🇷":"uzfxyzgpfzux","🇰🇼":"u8ky55b1s159","🇰🇾":"hkvwprp","🇰🇿":"v5fhsxnfccbu","🇱🇦":"urypgzfzvrfr","🇱🇧":"sy2h42s1p9mb","🇱🇨":"hm1vhe0","🇱🇮":"t19w3790prwt","🇱🇰":"unmee0j1bdbf","🇱🇷":"knkd672v1tfc","🇱🇸":"em4bw5y8xkd2","🇱🇹":"thr5zqvhh0yh","🇱🇺":"t156vef7s87b","🇱🇻":"tk27yqfkn8zu","🇱🇾":"se4dp22dh7cu","🇲🇦":"kwwsg6q40q9x","🇲🇨":"scr45m3qdw4f","🇲🇩":"tj19qus4dkem","🇲🇪":"sgqq5z580cfv","🇲🇫":"s2etfpegcfz5","🇲🇬":"g86ddkk86c2p","🇲🇭":"upvpfrbzzzzz","🇲🇰":"sgvedyd7w9sz","🇲🇱":"krk3rbd86yrd","🇲🇲":"urzxfxyzurzp","🇲🇳":"vpcrfrupzrux","🇲🇴":"urzzcpuxgpyr","🇲🇵":"urfxzxczyxfp","🇲🇶":"hm4kv4vs78te","🇲🇷":"kqncy033px19","🇲🇸":"hkuq5p4k4s7m","🇲🇹":"sf99cbbyu2y1","🇲🇺":"gd1x2vn9zgtj","🇲🇻":"uj460vuhqshu","🇲🇼":"ewne4kks8rj9","🇲🇽":"h2jb40n2h2hb","🇲🇾":"upfzzzczzzbr","🇲🇿":"ew6dp7bnctmr","🇳🇦":"e7r9jw4f3hks","🇳🇨":"gxbpvruzypuz","🇳🇪":"s3ktbxjx76p6","🇳🇫":"gpfzvrcpfzyp","🇳🇬":"s1w3qem1r95","🇳🇮":"h2c5kb821d9t","🇳🇱":"t0v5zeqz44gq","🇳🇴":"t3e00jdqgtrk","🇳🇵":"uwunw4k9c4hn","🇳🇷":"gzzxupgrczup","🇳🇺":"grgrgpvpurfp","🇳🇿":"gpfzvrcpfzyp","🇴🇲":"u6rm29k","🇵🇦":"h1y5dk3jekz8","🇵🇪":"5f33wyu15v1u","🇵🇫":"5852j8n010h0","🇵🇬":"gzgxbrcxupvr","🇵🇭":"urcpvpfxyzbr","🇵🇰":"usmd7pys7z96","🇵🇱":"t5tps90sbjzp","🇵🇲":"jpc2s0q41xcx","🇵🇳":"52n0j852j810","🇵🇷":"hkhvnteux3th","🇵🇸":"swq8rn4bk0x0","🇵🇹":"ky7ecpstwvpe","🇵🇼":"upvrgpbpvzgx","🇵🇾":"5mx7d89snnj1","🇶🇦":"u9450vwzcdt0","🇷🇪":"g9bgzw06yx26","🇷🇴":"th2wj3nf4hug","🇷🇸":"sgxu7jthc2kg","🇷🇺":"tnxwhb04kkcu","🇷🇼":"evq9gy7h5dx6","🇸🇦":"u80brw3jmgcy","🇸🇧":"gzcpuxbpyzuz","🇸🇨":"gcuettbmmmm7","🇸🇩":"smg10xr70mr8","🇸🇪":"t74ny1630zhm","🇸🇬":"upbzyzbxfpyz","🇸🇭":"6v3qmp1bcqg0"}'
+// Size 4K
+const POI = '🇦🇨:7wtfc36k7311|🇦🇩:sp91fdh1hs8k|🇦🇪:thnm324z28tz|🇦🇫:tw01hf2vt6g3|🇦🇬:deh11cc4re8k|🇦🇮:de5psufyen52|🇦🇱:srq64gwp77nk|🇦🇲:tp05by7g6jeg|🇦🇴:kqh8q8x7s13g|🇦🇶:d00000000000|🇦🇷:69y7pkxff4gc|🇦🇸:2jrnbd192kuc|🇦🇹:u2edk85115y4|🇦🇺:qgx0hnujcy27|🇦🇼:d6nppz6ssqnn|🇦🇽:u6wnm5nj5j7x|🇦🇿:tp5myu215xkz|🇧🇦:sru9f69s8vh7|🇧🇧:ddmej1cunchp|🇧🇩:wh0r3qs35cw7|🇧🇪:u151710b3yyw|🇧🇫:efnvs7yvk06x|🇧🇬:sx8dfsy|🇧🇭:theuq9k98ch6|🇧🇮:kxmkbcfq2bsf|🇧🇯:s19suwqm6119|🇧🇱:ddgr4pyhjupw|🇧🇲:dt9zy3rns6qt|🇧🇳:w8c9f9whj1jw|🇧🇴:6mpe3fmn9q87|🇧🇶:d6pmqkkjbffu|🇧🇷:6vjyjr7428nh|🇧🇸:dk2yqv3er7zb|🇧🇹:tuzkt0b9cdxk|🇧🇻:u4f7hb8nybjt|🇧🇼:ks18cxnzpcgt|🇧🇾:u9e9e98dm27k|🇧🇿:d50cgcqdqv95|🇨🇦:f244mkwzrmk9|🇨🇨:mjz6zc867uv2|🇨🇩:krr3p0u5nqqd|🇨🇫:s3jjwed8kn27|🇨🇬:krgq8nmru1sx|🇨🇭:u0m636zpbcpc|🇨🇮:eck4cu8exjy7|🇨🇰:2hppntbx22nn|🇨🇱:66jc8m77rmc3|🇨🇲:s28jvsx84r5q|🇨🇳:wx4g0bm6c408|🇨🇴:d2g6f3qmdzxh|🇨🇵:dezuwjygz2zm|🇨🇷:d1u0qxq7q7gp|🇨🇺:dhj7mxwqrp7d|🇨🇻:e6xjyz50ncp1|🇨🇼:d6nvnp7j03z7|🇨🇽:6w5u8fhdbscd|🇨🇾:swpzbdwfj5s1|🇨🇿:u2fkbecqcjgb|🇩🇪:u33dc0cppjs7|🇩🇯:sfng60dq5n6m|🇩🇰:u3butzxby979|🇩🇲:ddsreqpn63sh|🇩🇴:d7q686tr7797|🇩🇿:snd3hfudmhfh|🇪🇨:6r8jw6tkrxxd|🇪🇪:ud3t76cn2etg|🇪🇬:stq4yv3jkd44|🇪🇭:sf9yqg763t70|🇪🇷:sfew7gr6kj38|🇪🇸:ezjmgtwuzjwe|🇪🇹:sces1by96pw3|🇪🇺:u0wucrykkwgr|🇫🇮:ue423bvq08ck|🇫🇯:ruye5zqgznzm|🇫🇰:2hvbc3rtt2sk|🇫🇲:x3741zg9rbhv|🇫🇴:gg504enyx2uk|🇫🇷:u09tvw0f64r7|🇬🇦:s20k84m9yss1|🇬🇧:gcpvj0eh6eq9|🇬🇩:ddhkgmxpdrk1|🇬🇪:szrv76120d38|🇬🇫:dbdnrh4uxhh7|🇬🇬:gby0veyw3xz3|🇬🇭:ebzzgu07bt6h|🇬🇮:eykjw5jxkj6t|🇬🇱:gh9xytb6zygr|🇬🇲:edmh7x782f45|🇬🇳:ecc0e6e1kf4y|🇬🇵:dffhx0fyrpu2|🇬🇶:s0r33ssbe7mj|🇬🇷:swbb5ftzdvd2|🇬🇸:5nmf2e2sx54h|🇬🇹:9fz9u3qcs3eu|🇬🇺:x4quqz7w9z0j|🇬🇼:edj5nsccx11m|🇬🇾:d8y5ehb3fu4p|🇭🇰:wecpkthh2pd1|🇭🇲:rs390dkzeh03|🇭🇳:d4dwmwbsd4fq|🇭🇷:u24b9fhq99m7|🇭🇹:d7kecvwe3010|🇭🇺:u2mw1q8xkf61|🇮🇨:ethbvwk4db3x|🇮🇩:qqguwvtzpgcc|🇮🇪:gc7x9813h7tc|🇮🇱:sv9h9r1zf8mg|🇮🇲:gcsu892hjtff|🇮🇳:ttng692md2nf|🇮🇴:2m2qv1952vkh|🇮🇶:svzt98f7j53u|🇮🇷:tjy0mxq6jndq|🇮🇸:ge83tf0mkzed|🇮🇹:sr2yjyx33xus|🇯🇪:gbwrzx0n9j5e|🇯🇲:d71rh2cb4dng|🇯🇴:sv9tcfy9kwbu|🇯🇵:xn774c06kt10|🇰🇪:kzf0tuuburne|🇰🇬:txm4mm5102uu|🇰🇭:w64xmps09230|🇰🇮:80pxx3cvfz81|🇰🇲:mjcu3wjp1gd1|🇰🇳:de56em6bskhd|🇰🇵:wz4tmxdhbwmu|🇰🇷:wydveqv08x1t|🇰🇼:tj1yb2p1n0uj|🇰🇾:de7vbgu|🇰🇿:v2x94vsq7npx|🇱🇦:w78buqdzq685|🇱🇧:sy188541ujmp|🇱🇨:ddkxhkh|🇱🇮:u0qu36q1bgwt|🇱🇰:tc3ky120pk5q|🇱🇷:ec1k96jwksxn|🇱🇸:kdspd3xjfdd4|🇱🇹:u9c3zg7901e9|🇱🇺:u0u77kx7nhcp|🇱🇻:ud17xfee8jgw|🇱🇾:sksmb41m06rw|🇲🇦:evdsg7920f6v|🇲🇨:spv2bdmfdu8q|🇲🇩:u8kjtx42ddfd|🇲🇪:srtfbyuh0nxx|🇲🇫:s4fsxbyqrrg2|🇲🇬:mh9kde1h9njc|🇲🇭:xc2bx6nrzxgn|🇲🇰:srrkwyd7wjny|🇲🇱:egj5vndh9zck|🇲🇲:w5uhxt9p0gg3|🇲🇳:y23fe54cg7pv|🇲🇴:webwrc0hu9s7|🇲🇵:x4xtcsmp8uw3|🇲🇶:ddse737scj6m|🇲🇷:eg8px035uukh|🇲🇸:de5fbbsd8scd|🇲🇹:sq6hrn5z55e1|🇲🇺:mk2ujxsjzrq9|🇲🇻:t8s60xp99t0w|🇲🇼:kv8kse1s4gkh|🇲🇽:9g3w81t7j50q|🇲🇾:w28xbw2xbq5d|🇲🇿:ku9mb6pb7tmf|🇳🇦:k7vjku8q391t|🇳🇨:rsn9r5pzx34w|🇳🇪:s5jspvkuv7b6|🇳🇫:r8xrmfkbspt3|🇳🇬:s1w5tmm1vhu|🇳🇮:d473jn442k6s|🇳🇱:u173zmtys2gg|🇳🇴:u4y008wfgtve|🇳🇵:tv5cd31hr30b|🇳🇷:rxyth8z4rpj8|🇳🇺:rdydz1rcp6d8|🇳🇿:rbsr7dk08zd9|🇴🇲:t7cdjjj|🇵🇦:d1x2wd38yegj|🇵🇪:6q35wz50uwkx|🇵🇫:2svg2jt231p3|🇵🇬:rqbs5f6j0c2f|🇵🇭:wdq9709jey5e|🇵🇰:tt3kccxscyq6|🇵🇱:u3qcnhhs59zb|🇵🇲:fbr541922uru|🇵🇳:35e3rkzg7k31|🇵🇷:de0xssyxf5q9|🇵🇸:sv9jcb8p11f1|🇵🇹:eyckrcntwxuk|🇵🇼:wcrdy2pcrwck|🇵🇾:6ey6wh6t8c20|🇶🇦:ths2hxwyrm61|🇷🇪:mhprzu07euj6|🇷🇴:u81v25sq895r|🇷🇸:srywc9q8751q|🇷🇺:ucfv0n031d7w|🇷🇼:kxthzyc8bmf7|🇸🇦:th0pcu39mqrz|🇸🇧:rw390shcep0q|🇸🇨:mppmqspemem6|🇸🇩:sdz0hvv6hevj|🇸🇪:u6sce0t4hzhe|🇸🇬:w21zdqpk89ty|🇸🇭:5wmg3bkn7fg0|🏴‍☠️:1n7'
