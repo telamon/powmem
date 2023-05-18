@@ -23,7 +23,7 @@ export const SANE_DEFAULT = 15 // Somewhat sane
  */
 export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500000) {
   const nbits = geobits + 4
-  const buf = new Uint8Array(byteIdx(nbits))
+  const buf = new Uint8Array(roundByte(nbits))
   const prefix = packGeo(location, geobits, buf)
   shift(prefix, sex & 0b10)
   shift(prefix, sex & 1)
@@ -68,7 +68,7 @@ export function decodeASL (publicKey, geobits = SANE_DEFAULT) {
  * @returns {string} A geohash
  */
 export function unpackGeo (buf, nBits = SANE_DEFAULT) {
-  const nBytes = byteIdx(nBits) + 1
+  const nBytes = roundByte(nBits)
   if (buf.length < nBytes) throw new Error('BufferUnderflow, dst buffer too small')
   const cpy = []
   for (let i = 0; i < nBytes; i++) cpy[i] = buf[i]
@@ -76,16 +76,16 @@ export function unpackGeo (buf, nBits = SANE_DEFAULT) {
   let tmp = [0]
   for (let n = 0; n < nBits; n++) {
     if (n && !(n % 5)) {
-      str += GHM.charAt(tmp[0])
-      console.log('>>> Decoding', GHM.charAt(tmp[0]), tmp[0], binstr(tmp[0]))
+      const v = tmp[0] >> 3
+      str += GHM.charAt(v)
+      // console.log('>>> Decoding', GHM.charAt(v), v, binstr(v))
       tmp = [0]
     }
-    shift(tmp, unshift(cpy))
-    //const bit = unshift(cpy)
-    //tmp = tmp | bit << (4 - (n % 5))
+    unshift(tmp, unshift(cpy))
   }
-  str += GHM.charAt(tmp[0])
-  console.log('>>> Decoding', GHM.charAt(tmp[0]), tmp[0], binstr(tmp[0]))
+  const v = tmp[0] >> 3
+  str += GHM.charAt(v)
+  // console.log('>>> Decoding', GHM.charAt(v), v, binstr(v))
   return str.replace(/0+$/, '')
 }
 
@@ -101,39 +101,41 @@ ashes
  * @param {Uint8Array|Buffer|Array} destination buffer
  * @returns {Uint8Array} buffer containing binary geohash
  */
-// CODE  01101 11111 11000 00100 00010
-// LON   0 1 1  1 1  1 0 0  0 0  0 0 0
-// LAT    1 0  1 1 1  1 0  0 1 0  0 1
+//         q1    q2    q3   18 19
+// HASH  01101 11111 11000 001|00 00010
+// LON   0 1 1  1 1  1 0 0  0 |0  0 0 0
+// LAT    1 0  1 1 1  1 0  0 1| 0  0 1
 export function packGeo (hash, nBits = SANE_DEFAULT, buf = undefined) {
   nBits = Math.min(hash.length * 5, nBits)
   if (nBits < 5) throw new Error('precision has to be at least 5')
-  const nBytes = byteIdx(nBits) + 1
+  const nBytes = roundByte(nBits)
   if (!buf) buf = new Uint8Array(nBytes)
   let w = 0
-  const tail = nBytes // Begin with least significant byte
-  for (let i = tail; i > -1 && w <= nBits; i--) {
-    const bits = [GHU[hash[i]]]
+  const tail = Math.ceil(nBits / 5) - 1
+  for (let i = tail; i > -1; i--) {
+    const v = GHU[hash[i]] // Quintet not byte
+    const bits = [v << 3]
     let x = 5
-    /*
     if (i === tail && nBits % 5) { // Align on first run
-      x = nBits % 5
-      // for (let j = 0; j < 5 - (nBits % 5); j++) unshift(bits)
-    }*/
-    console.log('<<<Encoding', hash[i], bits[0], binstr(bits[0]))
+      x = (nBits % 5)
+      for (let y = 0; y < 5 - x; y++) shift(bits)
+    }
+    // console.log('<<<Encoding', hash[i], v, binstr(v), 'x', x)
     for (let j = 0; j < x; j++) {
-      shift(buf, unshift(bits)) // push-back least significant bit
+      shift(buf, shift(bits)) // push-back least significant bit
       if (++w >= nBits) break
     }
   }
+  // console.log('Packed:', hash.slice(0, tail + 1), binstr(buf))
   return buf
 }
 
 /*
- * Converts Bit-index to Byte-index
- * @param {number} Bit index
- * @returns {number} The byte index of bit index
+ * Rounds upwards to nearest byte
+ * @param {number} number of bits
+ * @returns {number} Amount of bytes
  */
-export function byteIdx (b) { return (b >> 3) + (b % 8 ? 1 : 0) }
+export function roundByte (b) { return (b >> 3) + (b % 8 ? 1 : 0) }
 
 /**
  * Treats buffer as a series of latched 8bit shift-registers
@@ -175,9 +177,9 @@ export function binstr (x, cap, bs = 5) {
   let str = ''
   for (let i = 0; i < x.length; i++) {
     for (let j = 0; j < 8; j++) {
+      if (i * 8 + j !== 0 && !((i * 8 + j) % bs)) str += ' '
       if (cap === i * 8 + j) str += '|'
       str += x[i] & (1 << j) ? '1' : '0'
-      if (i * 8 + j !== 0 && !((i * 8 + j) % bs)) str += ' '
     }
   }
   return str
