@@ -1,12 +1,12 @@
 {
-  "name": "hwm-asl",
+  "name": "powmem",
   "type": "module",
   "version": "1.0.0",
   "description": "POP-0101 implementation",
   "main": "index.js",
   "repository": "https://github.com/telamon/hwm-asl.git",
   "author": "telamon",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "private": false,
   "scripts": {
     "test": "node test.js",

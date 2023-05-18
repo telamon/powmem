@@ -132,11 +132,11 @@
         <div class="grid">
           <div>
             <label for="latitude">Latitude</label>
-            <input type="number" id="lat" name="lat" step="0.0001"/>
+            <input type="number" id="lat" name="lat" step="0.00001"/>
           </div>
           <div>
             <label for="longitude">Longitude</label>
-            <input type="number" id="lon" name="lon" step="0.0001"/>
+            <input type="number" id="lon" name="lon" step="0.00001"/>
           </div>
           <div>
             <label for="btn-geo"><strong>--Or--</strong> ask your device for location</label>
@@ -177,21 +177,16 @@
         <br/>
         <a href="#" role="button">Share on nostr</a>
       </div>
-      <!-- TODO: 
-        Hello, It turns out I am a [age][sex][location].
-        I might #reroll https://github.com/telamon/hwm-asl/demo.html
-
-      -->
     </section>
 
     <section>
       <!-- TODO: copy/move to README.md -->
       <h2>How to</h2>
       <h5>Install</h5>
-      <pre><code>$ npm i hwm-asl latlon-geohash geolib</code></pre>
+      <pre><code>$ npm i powmem latlon-geohash</code></pre>
       <h5>What you get</h5>
       <dl>
-        <dt><strong>hwm-asl</strong></dt>
+        <dt><strong>powmem</strong></dt>
         <dd>Provides <code>decodeASL()</code> and <code>roll()</code> functions<dd>
         <dt><strong>latlon-geohash</strong></dt>
         <dd>Transcoder between Latitude + Longitude pair and Geohash</dd>
@@ -201,21 +196,23 @@
 
       <h5>Decode</h5>
       <p>Pass any 32byte public key or 64char hexstring to the decode-function</p>
-      <pre><code>import { decodeASL } from 'hwm-asl'
+      <pre><code>import { decodeASL, flagOf } from 'powmem'
 import Geohash from 'latlon-geohash'
 
 const npub = '0149170fe78b061ce6c7295fff2daa303f710ba17efd8fafd8343292b4295e84'
 
 const { age, sex, location } = decodeASL(npub)
 
-console.log('Age:', [16, 24, 32, 42][age])
-console.log('Sex:', ['Sherry', 'Herman', 'Norton', '0dessa'][sex])
-console.log('Location:', Geohash.decode(location, 3))</code></pre>
+console.log('Age:', age)
+console.log('Sex:', sex)
+console.log('Country:', flagOf(location))
+console.log('Coordinates:', Geohash.decode(location, 3))</code></pre>
 
       Produces:
-      <pre><code>Age: 24
-Sex: Shreman
-Location: { lat: -54.1, lon: -130.1 }</code></pre>
+      <pre><code>Age: 1
+Sex: 0
+Country: 🇲🇫
+Coordinates: { lat: -75.2, lon: 10.5 }</code></pre>
     </section>
   </main>
   <script type="module" src="./demo.build.js"></script>

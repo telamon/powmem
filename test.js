@@ -5,8 +5,7 @@ import {
   packGeo,
   roll,
   unpackGeo,
-  flagOf,
-  binstr
+  flagOf
 } from './index.js'
 import Geohash from 'latlon-geohash'
 import { readFileSync, writeFileSync } from 'node:fs'
