@@ -106,7 +106,7 @@ async function fetchLocation (event) {
  */
 function decodePublicKey (event) {
   if (event) event.preventDefault()
-  const portraits = ['👩', '👨', '🏳️‍🌈', '🤖']
+  const portraits = ['👩', '👨', '🌈', '🤖']
   const ageSpans = ['16+', '24+', '32+', '42+']
 
   const { value } = document.getElementById('inp-pk')

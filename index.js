@@ -95,16 +95,16 @@ export function unpackGeo (buf, nBits = SANE_DEFAULT) {
  *  References:
  *  Format specification:  https://en.m.wikipedia.org/wiki/Geohash
  *  Bitdepthchart: https://www.ibm.com/docs/en/streams/4.3.0?topic=334-geoh
+      //         q1    q2    q3   18 19
+      // HASH  01101 11111 11000 001|00 00010
+      // LON   0 1 1  1 1  1 0 0  0 |0  0 0 0
+      // LAT    1 0  1 1 1  1 0  0 1| 0  0 1
 ashes
  * @param {string} str A geohash string.
  * @param {number?} [nBits] precision in bits; default 12
  * @param {Uint8Array|Buffer|Array} destination buffer
  * @returns {Uint8Array} buffer containing binary geohash
  */
-//         q1    q2    q3   18 19
-// HASH  01101 11111 11000 001|00 00010
-// LON   0 1 1  1 1  1 0 0  0 |0  0 0 0
-// LAT    1 0  1 1 1  1 0  0 1| 0  0 1
 export function packGeo (hash, nBits = SANE_DEFAULT, buf = undefined) {
   nBits = Math.min(hash.length * 5, nBits)
   if (nBits < 5) throw new Error('precision has to be at least 5')

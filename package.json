@@ -1,7 +1,7 @@
 {
   "name": "powmem",
   "type": "module",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "description": "POP-0101 implementation",
   "main": "index.js",
   "repository": "https://github.com/telamon/hwm-asl.git",
@@ -14,7 +14,8 @@
     "lint": "standard --fix",
     "build": "esbuild --bundle index.js --format=esm --outfile=index.esm.js",
     "demo": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js --servedir=docs/",
-    "prepublishOnly": "standard && npm test && node build.js"
+    "demo-build": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js",
+    "prepublishOnly": "standard && npm test && npm run build && npm run build-demo"
   },
   "peerDependencies": {
     "@noble/curves": "^1.0.0"

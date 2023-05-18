@@ -10,4 +10,5 @@
 !docs/.nojekyll
 !docs/CNAME
 !docs/demo.html
+!docs/demo.build.js
 !demo.js
