@@ -10204,9 +10204,33 @@ var isMining = false;
 var secret = null;
 var player = null;
 var pool = null;
-var relays = ["wss://nos.lol"];
+var relays = [
+  "wss://relay.f7z.io",
+  "wss://relay.nostr.info",
+  "wss://nostr-pub.wellorder.net",
+  "wss://relay.current.fyi",
+  "wss://relay.damus.io",
+  "wss://relay.snort.social",
+  "wss://nos.lol"
+];
+var TAGS2 = ["reroll", "reboot"];
 function initPool() {
+  if (pool)
+    return pool;
+  console.info("Connecting to relays", relays);
   pool = new SimplePool();
+  const filters = [
+    { kinds: [1], "#t": TAGS2 }
+  ];
+  const sub = pool.sub(relays, filters);
+  sub.on("event", (event) => {
+    const { pubkey, tags } = event;
+    const hashtag = tags.find((t) => t[0] === "t" && ~TAGS2.indexOf(t[1]));
+    if (hashtag) {
+      addMapPin("event", pubkey, event);
+    }
+  });
+  return pool;
 }
 function setMiningState(state) {
   const elBtn = document.getElementById("btn-generate");
@@ -10248,14 +10272,16 @@ async function generate(event) {
         secret = roll(age, sex, location, bits, testCount);
         keysTested += testCount;
         const hashRate = keysTested / (performance.now() - start);
-        document.getElementById("hashrate").innerText = `Hashrate: ${(hashRate * 1e3).toFixed(2)} keys/s`;
+        document.getElementById("hashrate").innerText = `Hashrate ${(hashRate * 1e3).toFixed(2)} keys/s`;
       }
       if (!secret && isMining)
         rollLoop();
       else {
         if (secret) {
-          document.getElementById("secret").innerText = "SECRET KEY:\n" + secret + "\n---\n" + nip19_exports.nsecEncode(secret);
+          document.getElementById("hashrate").innerText = "SECRET KEY FOUND";
+          document.getElementById("secret").innerText = "\n" + nip19_exports.nsecEncode(secret) + "\n";
           document.getElementById("inp-pk").value = bytesToHex2(schnorr.getPublicKey(secret));
+          document.getElementById("voluntary-ad").style.display = "block";
           decodePublicKey();
         }
         setMiningState(false);
@@ -10301,6 +10327,23 @@ function decodePublicKey(event) {
   document.getElementById("outLocation").innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`;
   document.getElementById("outFlag").innerText = flagOf(ASL.location);
   document.getElementById("text-share").value = mkPopaganda(value);
+  addMapPin("player", value);
+}
+function addMapPin(thing, key, nevent) {
+  const { age, sex, location } = decodeASL(key);
+  const { lat, lon } = latlon_geohash_default.decode(location);
+  const { x, y } = projectRobin(lat, lon);
+  const elBox = document.getElementById("map-box");
+  const elMap = document.getElementById("map");
+  const r = elMap.getBoundingClientRect();
+  const elPin = document.createElement("pow-pin");
+  elPin.innerText = emoOf(sex, age);
+  const scale = 0.1875279169222285 * 1.969;
+  const rx = r.width * (x * scale * 0.5 + 0.5);
+  const ry = r.height * (y * -scale + 0.5);
+  elPin.style.left = rx + "px";
+  elPin.style.top = ry + "px";
+  elBox.appendChild(elPin);
 }
 function emoOf(sex, age = 1) {
   return [
@@ -10322,7 +10365,7 @@ function mkPopaganda(pk) {
     emo = emoOf(sex, age);
     at = ageSpans[age];
   }
-  return `I decoded my public key and it turned out like this:
+  return `I decoded my public key and I turned out like this:
 
 ${ft} ${emo} ${at}.
 
@@ -10349,22 +10392,23 @@ async function shareDecode(ev) {
   tarea.disabled = true;
   document.getElementById("btn-share").disabled = true;
   const asl = decodeASL(pk);
+  const gTag = ["g", asl.location];
   const tTags = [
     ["t", "reroll"],
     ["t", "powmem"],
     ["t", "decentralize"]
   ];
-  const gTags = ["g", asl.location];
   const event = {
     kind: 1,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1e3),
-    tags: [gTags, ...tTags],
+    tags: [...tTags, gTag],
     content: tarea.value
   };
   event.id = getEventHash(event);
   event.sig = mode === LOCAL ? signEvent(event, secret) : await window.nostr.signEvent(event);
   initPool();
+  console.info("Posting event", nip19_exports.noteEncode(event.id), event);
   const pubs = pool.publish(relays, event);
   pubs.on("ok", (ev2) => console.info('Relay "OK": Post Accepted', ev2));
 }
@@ -10387,6 +10431,7 @@ function boot() {
       player.pause();
   });
   document.getElementById("text-share").value = mkPopaganda();
+  initPool();
 }
 document.addEventListener("DOMContentLoaded", boot);
 async function initSound(sampleRate) {
@@ -10552,6 +10597,74 @@ var ModPlayer = class {
   static async wasmLoaded() {
   }
 };
+function projectRobin(lat, lng, remap = false) {
+  const X = [
+    [1, -567239e-17, -715511e-10, 311028e-11],
+    [0.9986, -482241e-9, -24897e-9, -133094e-11],
+    [0.9954, -831031e-9, -44861e-9, -986588e-12],
+    [0.99, -135363e-8, -596598e-10, 367749e-11],
+    [0.9822, -167442e-8, -44975e-10, -572394e-11],
+    [0.973, -214869e-8, -903565e-10, 188767e-13],
+    [0.96, -305084e-8, -900732e-10, 164869e-11],
+    [0.9427, -382792e-8, -653428e-10, -261493e-11],
+    [0.9216, -467747e-8, -104566e-9, 48122e-10],
+    [0.8962, -536222e-8, -323834e-10, -543445e-11],
+    [0.8679, -609364e-8, -1139e-7, 332521e-11],
+    [0.835, -698325e-8, -640219e-10, 934582e-12],
+    [0.7986, -755337e-8, -500038e-10, 935532e-12],
+    [0.7597, -798325e-8, -359716e-10, -227604e-11],
+    [0.7186, -851366e-8, -70112e-9, -863072e-11],
+    [0.6732, -986209e-8, -199572e-9, 191978e-10],
+    [0.6213, -0.010418, 883948e-10, 624031e-11],
+    [0.5722, -906601e-8, 181999e-9, 624033e-11],
+    [0.5322, 0, 0, 0]
+  ];
+  const Y = [
+    [0, 0.0124, 372529e-15, 115484e-14],
+    [0.062, 0.0124001, 176951e-13, -592321e-14],
+    [0.124, 0.0123998, -709668e-13, 225753e-13],
+    [0.186, 0.0124008, 266917e-12, -844523e-13],
+    [0.248, 0.0123971, -999682e-12, 315569e-12],
+    [0.31, 0.0124108, 373349e-11, -11779e-10],
+    [0.372, 0.0123598, -13935e-9, 439588e-11],
+    [0.434, 0.0125501, 520034e-10, -100051e-10],
+    [0.4968, 0.0123198, -980735e-10, 922397e-11],
+    [0.5571, 0.0120308, 402857e-10, -52901e-10],
+    [0.6176, 0.0120369, -390662e-10, 736117e-12],
+    [0.6769, 0.0117015, -280246e-10, -854283e-12],
+    [0.7346, 0.0113572, -408389e-10, -518524e-12],
+    [0.7903, 0.0109099, -486169e-10, -10718e-10],
+    [0.8435, 0.0103433, -646934e-10, 536384e-14],
+    [0.8936, 969679e-8, -646129e-10, -854894e-11],
+    [0.9394, 840949e-8, -192847e-9, -421023e-11],
+    [0.9761, 616525e-8, -256001e-9, -421021e-11],
+    [1, 0, 0, 0]
+  ];
+  const NODES = 18;
+  const V = (C, z) => C[0] + z * (C[1] + z * (C[2] + z * C[3]));
+  const FXC = 0.8487;
+  const FYC = 1.3523;
+  const D2R = Math.PI / 180;
+  const R2D = 180 / Math.PI;
+  const C1 = 11.459155902616464;
+  const RC1 = 0.0872664625997164;
+  const SCALE = 0.1875279169222285;
+  const phi = lat * D2R;
+  const lam = lng * D2R;
+  let dphi = Math.abs(phi);
+  let i = Math.floor(dphi * C1);
+  if (i >= NODES)
+    i = NODES - 1;
+  dphi = R2D * (dphi - RC1 * i);
+  const x = V(X[i], dphi) * FXC * lam;
+  let y = V(Y[i], dphi) * FYC;
+  if (phi < 0)
+    y = -y;
+  if (remap)
+    return { x: x * SCALE + 0.5, y: y * -SCALE + 0.5 };
+  else
+    return { x, y };
+}
 /*! Bundled license information:
 
 @noble/hashes/utils.js:
