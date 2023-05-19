@@ -1,10 +1,13 @@
 {
   "name": "powmem",
   "type": "module",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "POP-0101 implementation",
   "main": "index.js",
-  "files": ["index.js", "index.esm.js"],
+  "files": [
+    "index.js",
+    "index.esm.js"
+  ],
   "repository": "https://github.com/telamon/powmem.git",
   "author": "telamon",
   "license": "MIT",
@@ -16,7 +19,7 @@
     "build": "esbuild --bundle index.js --format=esm --outfile=index.esm.js",
     "demo": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js --servedir=docs/",
     "demo-build": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js",
-    "prepublishOnly": "npm test && npm run build && npm run build-demo"
+    "prepublishOnly": "npm test && npm run build && npm run demo-build"
   },
   "peerDependencies": {
     "@noble/curves": "^1.0.0"
