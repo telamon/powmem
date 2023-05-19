@@ -16,7 +16,7 @@
     "build": "esbuild --bundle index.js --format=esm --outfile=index.esm.js",
     "demo": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js --servedir=docs/",
     "demo-build": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js",
-    "prepublishOnly": "standard && npm test && npm run build && npm run build-demo"
+    "prepublishOnly": "npm test && npm run build && npm run build-demo"
   },
   "peerDependencies": {
     "@noble/curves": "^1.0.0"
