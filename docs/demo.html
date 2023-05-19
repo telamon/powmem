@@ -63,9 +63,18 @@
     #secret { text-align: center; }
     [data-theme="dark"] { background-color: #11191f; }
     footer {
-      padding-top: 2em;
+      margin-top: 6em;
       text-align: center;
       color: var(--secondary);
+    }
+    pow-pin {
+      display: inline-block;
+      position: absolute;
+      min-width: 2em;
+      min-height: 2em;
+      border-radius: 50%;
+      background-color: #5e35b180;
+      text-align: center;
     }
   </style>
 </head>
@@ -96,7 +105,7 @@
       <dt>Make PoW slightly sustainable</dt>
       <!-- PoW is the very definition of waste -->
       <dd>
-        This is a key generator based on a spec
+        This is a key generator based on a <a href="https://github.com/decentlabs-north/pops" style="color: var(--secondary);">spec</a>
         that encodes ASL into the first 19-bits of your public key.<br/>
         It uses the same mechanics as Proof of Work but burns data instead of burning zeros.<br/>
         PoW is bad, but this way it only has to be done once.<br/>
@@ -110,9 +119,9 @@
       </dd>
       <dt>Localize relays (nostr)</dt>
       <dd>
-        Create incentive for local actors to run relays so that
-        relays appealing more to some audiences and less to others emerge.<br/>
-        Importing translators of culture is vital for sustained network growth.✌️
+        <samp>POP-0101</samp> strives to create incentive that benefit local actors.<br/>
+        Let relays appealing more to some audiences and less to others emerge.<br/>
+        Importing culture is vital for sustained network growth.✌️
         <!-- More nodes, more resources, more transactions, less centralization. -->
       </dd>
     </dl>
@@ -174,6 +183,11 @@
       <footer>
         <span id="hashrate">Set your constraints and press Generate</span>
         <pre><code id="secret"></code></pre>
+        <div id="voluntary-ad" style="display: none">
+          <a href="https://iris.to" style="opacity:0.8">You don't nostr? Try iris!</a>
+          <br/>
+          <small>Paste your generated key to "login"</small>
+        </div>
       </footer>
     </article>
 
@@ -235,21 +249,24 @@ Coordinates: { lat: -75.2, lon: 10.5 }</code></pre>
     </section>
 
     <section>
-      <h2>World Map</h2>
-      <small>Not Implemented, need math help</small>
+      <h2>#REROLL</h2>
       <p>
         Listing posts tagged with <code>#reroll</code> and <code>#powmem</code>.
       </p>
       <div>
-        <img src="https://simplemaps.com/static/demos/resources/svg-library/svgs/world.svg"/>
+        <div id="map-box" style="position: absolute;"></div>
+        <img id="map" src="https://simplemaps.com/static/demos/resources/svg-library/svgs/world.svg"/>
+        <!-- <div id="pin" style="display: inline-block; position: relative; background-color: purple; width: 2em; height: 2em;">&nbsp;</div>-->
       </div>
     </section>
 
   </main>
   <footer data-theme="dark">
-    <img src="https://raw.githubusercontent.com/decentlabs-north/whiteboard/master/iterate.svg"/><br/>
-    Crafted with care by the Citizens of the Angular Structure (DLabs)<br/>
-    2023 All wrongs reversed
+    Crafted with care, 2023 All Wrongs Reversed<br/><br/>
+    <a href="https://iris.to/telamon@xorcery.co" target="new">
+      <img src="https://raw.githubusercontent.com/decentlabs-north/whiteboard/master/iterate.svg"/>
+    </a>
+    <br/>
   </footer>
   <script type="text/javascript" src="libxm.js"></script><!-- Creds: https://github.com/Artefact2/libxm.js/ -->
   <script type="module" src="./demo.build.js"></script>

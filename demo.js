@@ -3,19 +3,46 @@ import Geohash from 'latlon-geohash'
 import { nip19, SimplePool, getEventHash, signEvent } from 'nostr-tools'
 import { schnorr } from '@noble/curves/secp256k1'
 import { bytesToHex } from '@noble/hashes/utils'
+
 let elForm
 let isMining = false
 let secret = null
 let player = null
 let pool = null
-const relays = ['wss://nos.lol']
+const relays = [
+  'wss://relay.f7z.io',
+  'wss://relay.nostr.info',
+  'wss://nostr-pub.wellorder.net',
+  'wss://relay.current.fyi',
+  'wss://relay.damus.io',
+  'wss://relay.snort.social',
+  'wss://nos.lol'
+]
+const TAGS = ['reroll', 'reboot']
 
 /**
  * Connects to nostr network
  */
 function initPool () {
+  if (pool) return pool
+  console.info('Connecting to relays', relays)
   pool = new SimplePool()
-} 
+
+  const filters = [
+    { kinds: [1], '#t': TAGS }
+  ]
+  const sub = pool.sub(relays, filters)
+
+  sub.on('event', event => {
+    const { pubkey, tags } = event
+    const hashtag = tags.find(t => t[0] === 't' && ~TAGS.indexOf(t[1]))
+    if (hashtag) {
+      // console.info('Adding pin', hashtag, pubkey, event)
+      addMapPin('event', pubkey, event)
+    }
+  })
+  return pool
+}
 
 /**
  * Updates the 'result' section after/while
@@ -64,15 +91,17 @@ async function generate (event) {
         secret = roll(age, sex, location, bits, testCount)
         keysTested += testCount
         const hashRate = keysTested / (performance.now() - start)
-        document.getElementById('hashrate').innerText = `Hashrate: ${(hashRate * 1000).toFixed(2)} keys/s`
+        document.getElementById('hashrate').innerText = `Hashrate ${(hashRate * 1000).toFixed(2)} keys/s`
       }
 
       // Auto-restart/stop
       if (!secret && isMining) rollLoop()
       else {
         if (secret) {
-          document.getElementById('secret').innerText = 'SECRET KEY:\n' + secret + '\n---\n' + nip19.nsecEncode(secret)
+          document.getElementById('hashrate').innerText = 'SECRET KEY FOUND'
+          document.getElementById('secret').innerText = '\n' + nip19.nsecEncode(secret) + '\n'
           document.getElementById('inp-pk').value = bytesToHex(schnorr.getPublicKey(secret))
+          document.getElementById('voluntary-ad').style.display = 'block'
           decodePublicKey()
         }
         setMiningState(false)
@@ -135,6 +164,27 @@ function decodePublicKey (event) {
   document.getElementById('outLocation').innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`
   document.getElementById('outFlag').innerText = flagOf(ASL.location)
   document.getElementById('text-share').value = mkPopaganda(value)
+  addMapPin('player', value)
+}
+
+// setTimeout(() => addMapPin('player', 'a68de0b819e5bbc15bbe727275826e9e29a9aa44d084f8e3a9736f856ef8edef'), 500)
+function addMapPin (thing, key, nevent) {
+  const { age, sex, location } = decodeASL(key)
+  const { lat, lon } = Geohash.decode(location)
+  const { x, y } = projectRobin(lat, lon)
+  const elBox = document.getElementById('map-box')
+  const elMap = document.getElementById('map')
+  const r = elMap.getBoundingClientRect()
+  const elPin = document.createElement('pow-pin')
+  elPin.innerText = emoOf(sex, age)
+  const scale = 0.1875279169222285 * 1.969
+  const rx = r.width * (x * scale * 0.5 + 0.5)
+  const ry = r.height * (y * -scale + 0.5)
+  // console.info('pin', flag, x, y, 'px', rx, ry)
+  // console.info('box', r.width, r.height, 'scales', r.width / rx, r.height / ry)
+  elPin.style.left = rx + 'px'
+  elPin.style.top = ry + 'px'
+  elBox.appendChild(elPin) // .insertBefore(elPin, elMap)
 }
 
 function emoOf (sex, age = 1) {
@@ -157,7 +207,7 @@ function mkPopaganda (pk) {
     emo = emoOf(sex, age)
     at = ageSpans[age]
   }
-  return `I decoded my public key and it turned out like this:\n\n${ft} ${emo} ${at}.\n
+  return `I decoded my public key and I turned out like this:\n\n${ft} ${emo} ${at}.\n
 Should I #reroll ?
 https://telamon.github.io/powmem/demo.html`
 }
@@ -185,17 +235,17 @@ async function shareDecode (ev) {
   tarea.disabled = true
   document.getElementById('btn-share').disabled = true
   const asl = decodeASL(pk)
+  const gTag = ['g', asl.location]
   const tTags = [
     ['t', 'reroll'],
-    ['t', 'powmem',],
+    ['t', 'powmem'],
     ['t', 'decentralize']
   ]
-  const gTags = ['g', asl.location]
   const event = {
     kind: 1,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
-    tags: [gTags, ...tTags],
+    tags: [...tTags, gTag],
     content: tarea.value
   }
   event.id = getEventHash(event)
@@ -204,6 +254,7 @@ async function shareDecode (ev) {
     ? signEvent(event, secret)
     : (await window.nostr.signEvent(event))
   initPool()
+  console.info('Posting event', nip19.noteEncode(event.id), event)
   const pubs = pool.publish(relays, event)
   pubs.on('ok', ev => console.info('Relay "OK": Post Accepted', ev))
 }
@@ -237,6 +288,7 @@ function boot () {
     })
 
   document.getElementById('text-share').value = mkPopaganda()
+  initPool()
 }
 document.addEventListener('DOMContentLoaded', boot)
 
@@ -346,14 +398,14 @@ class ModPlayer {
       xmd.sampleCount = Module.getValue(cSamplesPtr, 'i64');
 
       xmd.instruments = [];
-      for(var j = 1; j <= ninsts; ++j) {
+      for(const j = 1; j <= ninsts; ++j) {
         xmd.instruments.push({
           latestTrigger: Module._xm_get_latest_trigger_of_instrument(moduleContext, j),
         });
       }
 
       xmd.channels = [];
-      for(var j = 1; j <= nchans; ++j) {
+      for(const j = 1; j <= nchans; ++j) {
         xmd.channels.push({
           active: Module._xm_is_channel_active(moduleContext, j),
           latestTrigger: Module._xm_get_latest_trigger_of_channel(moduleContext, j),
@@ -448,4 +500,75 @@ class ModPlayer {
   static async wasmLoaded () {
     /** Can't figure out the emscripten bootstrap. they forgot to export a promise? O_o */
   }
+}
+
+// Borrowed from: https://github.com/oesmith/PJ_robin.js/blob/master/pj_robin.js
+function projectRobin (lat, lng, remap = false) {
+  // note: following terms based upon 5 deg. intervals in degrees.
+  const X = [
+    [1, -5.67239e-12, -7.15511e-05, 3.11028e-06],
+    [0.9986, -0.000482241, -2.4897e-05, -1.33094e-06],
+    [0.9954, -0.000831031, -4.4861e-05, -9.86588e-07],
+    [0.99, -0.00135363, -5.96598e-05, 3.67749e-06],
+    [0.9822, -0.00167442, -4.4975e-06, -5.72394e-06],
+    [0.973, -0.00214869, -9.03565e-05, 1.88767e-08],
+    [0.96, -0.00305084, -9.00732e-05, 1.64869e-06],
+    [0.9427, -0.00382792, -6.53428e-05, -2.61493e-06],
+    [0.9216, -0.00467747, -0.000104566, 4.8122e-06],
+    [0.8962, -0.00536222, -3.23834e-05, -5.43445e-06],
+    [0.8679, -0.00609364, -0.0001139, 3.32521e-06],
+    [0.835, -0.00698325, -6.40219e-05, 9.34582e-07],
+    [0.7986, -0.00755337, -5.00038e-05, 9.35532e-07],
+    [0.7597, -0.00798325, -3.59716e-05, -2.27604e-06],
+    [0.7186, -0.00851366, -7.0112e-05, -8.63072e-06],
+    [0.6732, -0.00986209, -0.000199572, 1.91978e-05],
+    [0.6213, -0.010418, 8.83948e-05, 6.24031e-06],
+    [0.5722, -0.00906601, 0.000181999, 6.24033e-06],
+    [0.5322, 0.0, 0.0, 0.0]
+  ]
+  const Y = [
+    [0, 0.0124, 3.72529e-10, 1.15484e-09],
+    [0.062, 0.0124001, 1.76951e-08, -5.92321e-09],
+    [0.124, 0.0123998, -7.09668e-08, 2.25753e-08],
+    [0.186, 0.0124008, 2.66917e-07, -8.44523e-08],
+    [0.248, 0.0123971, -9.99682e-07, 3.15569e-07],
+    [0.31, 0.0124108, 3.73349e-06, -1.1779e-06],
+    [0.372, 0.0123598, -1.3935e-05, 4.39588e-06],
+    [0.434, 0.0125501, 5.20034e-05, -1.00051e-05],
+    [0.4968, 0.0123198, -9.80735e-05, 9.22397e-06],
+    [0.5571, 0.0120308, 4.02857e-05, -5.2901e-06],
+    [0.6176, 0.0120369, -3.90662e-05, 7.36117e-07],
+    [0.6769, 0.0117015, -2.80246e-05, -8.54283e-07],
+    [0.7346, 0.0113572, -4.08389e-05, -5.18524e-07],
+    [0.7903, 0.0109099, -4.86169e-05, -1.0718e-06],
+    [0.8435, 0.0103433, -6.46934e-05, 5.36384e-09],
+    [0.8936, 0.00969679, -6.46129e-05, -8.54894e-06],
+    [0.9394, 0.00840949, -0.000192847, -4.21023e-06],
+    [0.9761, 0.00616525, -0.000256001, -4.21021e-06],
+    [1.0, 0.0, 0.0, 0]
+  ]
+  const NODES = 18
+  const V = (C, z) => C[0] + z * (C[1] + z * (C[2] + z * C[3]))
+  const FXC = 0.8487
+  const FYC = 1.3523
+  const D2R = Math.PI / 180.0
+  const R2D = 180.0 / Math.PI
+  const C1 = 11.459155902616464
+  const RC1 = 0.0872664625997164
+  const SCALE = 0.1875279169222285
+
+  const phi = lat * D2R
+  const lam = lng * D2R
+
+  let dphi = Math.abs(phi)
+  let i = Math.floor(dphi * C1)
+  if (i >= NODES) i = NODES - 1
+  dphi = R2D * (dphi - RC1 * i)
+  const x = V(X[i], dphi) * FXC * lam
+  let y = V(Y[i], dphi) * FYC
+
+  if (phi < 0) y = -y
+
+  if (remap) return { x: x * SCALE + 0.5, y: y * -SCALE + 0.5 }
+  else return { x, y }
 }
