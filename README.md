@@ -1,11 +1,4 @@
-<style>
-    
-    #bitviz { text-align: center; }
-    #bitviz .au code { color: #e8ff48; background-color: #c8b200; box-shadow: 0 0 8px goldenrod; text-shadow: 1px -2px 2px #9ff522; }
-    #bitviz .ag code { color: #d2f8fc; background-color: #5A6166; box-shadow: 0 0 5px #a3d4ff87; }
-    #bitviz .cu code { color: orange; background-color: #775009; }
 
-    </style>
 
 # Open PoWMeM Implementation
   <section>
@@ -21,7 +14,7 @@
         </span>
       </h2>
     </section>
-    
+
 ### Make PoW slightly sustainable
 ```
 This is a key generator based on a spec that encodes ASL into the first 19-bits of your public key.
