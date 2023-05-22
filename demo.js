@@ -75,7 +75,7 @@ async function generate (event) {
     const sex = parseInt(fd.get('sex'))
     const lat = parseFloat(fd.get('lat'))
     const lon = parseFloat(fd.get('lon'))
-    const burn = !!fd.get('pow')
+    const burn = !fd.get('pow')
     const bits = burn ? parseInt(fd.get('bits')) : 8
     const mute = !!fd.get('music')
     const location = Geohash.encode(lat, lon, 6)
