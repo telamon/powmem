@@ -51,7 +51,7 @@ Transcoder between Latitude + Longitude pair and Geohash
 
 # Decode
 ## Pass any 32byte public(npub) key or 64char hexstring to the decode-function
-```
+```javascript
 import { decodeASL, flagOf } from 'powmem'
 import Geohash from 'latlon-geohash'
 
@@ -66,7 +66,7 @@ console.log('Coordinates:', Geohash.decode(location, 3))
 ```
 ### Produces:
 
-```
+```javascript
 Produces:
 Age: 1
 Sex: 0
@@ -77,10 +77,6 @@ Coordinates: { lat: -75.2, lon: 10.5 }
 
 TODO: write a proper README.md
 
-```javascript
-var s = "JavaScript syntax highlighting";
-alert(s);
-```
 
 
 
