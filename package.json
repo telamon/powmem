@@ -1,7 +1,7 @@
 {
   "name": "powmem",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "POP-0101 implementation",
   "main": "index.js",
   "files": [
@@ -19,7 +19,7 @@
     "build": "esbuild --bundle index.js --format=esm --outfile=index.esm.js",
     "demo": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js --servedir=docs/",
     "demo-build": "esbuild --bundle demo.js --format=esm --outfile=docs/demo.build.js",
-    "prepublishOnly": "npm test && npm run build && npm run demo-build"
+    "prepublishOnly": "npm test && npm run build"
   },
   "peerDependencies": {
     "@noble/curves": "^1.0.0"
