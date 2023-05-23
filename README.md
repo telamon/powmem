@@ -1,4 +1,11 @@
 
+> I think this project is cool cause
+> If you'd even begin to try and estimate the cost
+> Of having a form + map-view using web2.0, you'd very quickly
+> find yourself banging your head against a wall
+> wishing you'd have asked to be paid at least the double.
+
+
 
 # Open PoWMeM Implementation
   <section>
