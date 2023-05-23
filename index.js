@@ -1,11 +1,9 @@
 import { schnorr } from '@noble/curves/secp256k1'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
 
-/**
- * @typedef {0|1} bit
- * @typedef {string} hexstring
- * @typedef {{age: number, sex: number, location: string}} ASL
- */
+/** @typedef {0|1} bit */
+/** @typedef {string} hexstring */
+/** @typedef {{age: number, sex: number, location: string}} ASL */
 
 const GHM = '0123456789bcdefghjkmnpqrstuvwxyz' // (geohash-specific) Base32 map
 const GHU = GHM.split('').reduce((h, l, i) => { h[l] = i; return h }, {})
@@ -188,7 +186,7 @@ export function binstr (x, cap, bs = 5) {
 /**
  * Calculates XOR-Distance between two buffers
  * @param {Uint8Array|Buffer|Array} a Buffer A
- * @param {Uint8Array|Buffer|Array} B Buffer B
+ * @param {Uint8Array|Buffer|Array} b Buffer B
  * @returns {number} Distance
  */
 export function xorDistance (a, b) {
@@ -205,7 +203,6 @@ export function xorDistance (a, b) {
 /**
  * Returns nearest flag of geohash.
  * The coordinates were given by GPT.
- * @type {(geohash: string, bits: number) => string}
  * @param {string} geohash A hashed location
  * @param {number} [bits] Geohash bit precision
  * @returns {string} Emoji Flag
