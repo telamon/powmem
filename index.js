@@ -53,9 +53,11 @@ export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500
  */
 export function decodeASL (publicKey, geobits = SANE_DEFAULT) {
   if (typeof publicKey === 'string') publicKey = hexToBytes(publicKey)
-  const age = unshift(publicKey) | unshift(publicKey) << 1
-  const sex = unshift(publicKey) | unshift(publicKey) << 1
-  const location = unpackGeo(publicKey, geobits)
+  const cpy = new Uint8Array(roundByte(4 + geobits)) // unshift alters buffers, using a copy.
+  for (let i = 0; i < cpy.length; i++) cpy[i] = publicKey[i]
+  const age = unshift(cpy) | unshift(cpy) << 1
+  const sex = unshift(cpy) | unshift(cpy) << 1
+  const location = unpackGeo(cpy, geobits)
   return { age, sex, location }
 }
 
