@@ -12,7 +12,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 test('Decode ASL', async t => {
   const secret = '9ec11fa81c53e7115b014a373a4b66172e4f476091a57b20be1103e935738f9c'
-  const { age, sex, location } = decodeASL(schnorr.getPublicKey(secret))
+  const pkHex = 'b618af96fde8ba61d43dde06583e7a897256c10c1d11c4b32dc15b76726593e6'
+  const pk = schnorr.getPublicKey(secret)
+  t.equal(Buffer.from(pk).hexSlice(), pkHex)
+  const { age, sex, location } = decodeASL(pk)
   t.equal(age, 2)
   t.equal(sex, 1)
   t.equal(location, 'cdw')
