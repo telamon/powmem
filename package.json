@@ -25,11 +25,15 @@
     "@noble/curves": "^1.0.0"
   },
   "devDependencies": {
-    "@noble/curves": "^1.0.0",
+    "@svgdotjs/svg.js": "^3.1.2",
     "esbuild": "^0.17.19",
     "latlon-geohash": "^2.0.0",
+    "leaflet": "^1.9.4",
     "nostr-tools": "^1.10.1",
     "standard": "^17.0.0",
     "tapzero": "^0.6.1"
+  },
+  "dependencies": {
+    "@noble/secp256k1": "^2.0.0"
   }
 }

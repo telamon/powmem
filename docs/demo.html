@@ -76,7 +76,20 @@
       background-color: #5e35b180;
       text-align: center;
     }
+    /*
+    #leafmap a[role=button] {
+      padding: unset;
+      outline: unset;
+      /* color: unset;
+      background-color: unset;*/
+      border-radius: unset;
+      border: unset;
+      border-color: unset;
+    }*/
+
+    #world svg { max-width: 50%; }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
   <main class="container">
@@ -110,11 +123,15 @@
         It uses the same mechanics as Proof of Work but burns data instead of burning zeros.<br/>
         <!-- PoW is bad.<br/> -->
       </dd>
-      <dt>Decentralized Taxonomy</dt>
+      <dt>Decentralized Profiles</dt>
       <dd>
+        Provide tech-agnostic profile scheme. <br/>
+        Your public-key can be decoded regardless what chain, wallet or network it is used on.
+        <!--
         Sort the hashspace holistically by redistributing data across popular metrics.<br/>
         Let clients attract other clients with similar interests
         and form natural clusters.
+        -->
         <!-- Peers, set, their own, bits.-->
       </dd>
       <dt>Localize relays (nostr)</dt>
@@ -127,12 +144,14 @@
     </dl>
     <br/>
     <br/>
+    <!-- <div id="leafmap" style="height: 50vh;"></div> -->
     <section>
       <h2>POP-Users</h2>
       <!--
       <p>
         Listing posts tagged with <code>#reroll</code> and <code>#powmem</code>.
       </p>-->
+      <div id="world"></div>
       <div>
         <div id="map-box" style="position: absolute;"></div>
         <img id="map" src="https://simplemaps.com/static/demos/resources/svg-library/svgs/world.svg"/>

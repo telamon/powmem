@@ -3,6 +3,8 @@ import Geohash from 'latlon-geohash'
 import { nip19, SimplePool, getEventHash, signEvent } from 'nostr-tools'
 import { schnorr } from '@noble/curves/secp256k1'
 import { bytesToHex } from '@noble/hashes/utils'
+import { SVG } from '@svgdotjs/svg.js'
+// import L from 'leaflet' A complete waste of time.
 
 let elForm
 let isMining = false
@@ -163,14 +165,16 @@ function decodePublicKey (event) {
   document.getElementById('outLocation').href = `https://www.openstreetmap.org/search?query=${lat},${lon}`
   document.getElementById('outLocation').innerText = `Geohash: ${ASL.location}, Lat: ${lat}, Lon: ${lon}`
   document.getElementById('outFlag').innerText = flagOf(ASL.location)
-  document.getElementById('text-share').value = mkPopaganda(value)
+  document.getElementById('text-share').value = mkPOPaganda(value)
   addMapPin('player', value)
 }
 
-// setTimeout(() => addMapPin('player', 'a68de0b819e5bbc15bbe727275826e9e29a9aa44d084f8e3a9736f856ef8edef'), 500)
-function addMapPin (thing, key, nevent) {
+const [svgMap, setSvgMap] = unpromise()
+setTimeout(() => addMapPin('player', 'a68de0b819e5bbc15bbe727275826e9e29a9aa44d084f8e3a9736f856ef8edef'), 500)
+async function addMapPin (thing, key, nevent) {
   const { age, sex, location } = decodeASL(key)
   const { lat, lon } = Geohash.decode(location)
+  // L.marker([lat, lon], { }).addTo(lMap)
   const { x, y } = projectRobin(lat, lon)
   const elBox = document.getElementById('map-box')
   const elMap = document.getElementById('map')
@@ -185,6 +189,72 @@ function addMapPin (thing, key, nevent) {
   elPin.style.left = rx + 'px'
   elPin.style.top = ry + 'px'
   elBox.appendChild(elPin) // .insertBefore(elPin, elMap)
+
+  // ------------------------------------------
+  // New map
+  /** @type {SVGSVGElement} */
+  const svg = await svgMap
+  const marker = SVG().size(200, 200)
+  const ox = (x * scale * 0.5 + 0.5) * svg.width()
+  const oy = (y * -scale + 0.5) * svg.height()
+  console.log('M2', ox, oy)
+  marker.circle(75)
+    .fill('#f06')
+    .move(ox, oy)
+  svg.add(marker)
+}
+
+async function initMap () {
+  const res = await fetch('./world.svg')
+  const text = await res.text()
+  const container = document.getElementById('world')
+  container.innerHTML = text
+  const elMap = container.querySelector('svg')
+  elMap.style.width = '100%'
+  const svg = SVG(elMap)
+  setSvgMap(svg)
+  window.map = svg
+  console.log('SVG ELEMENT', svg)
+  const marker = SVG(`<g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="opacity:0.682785;fill:#000000;stroke:#4b4b4b;stroke-width:6.15307;stroke-dasharray:24.6123, 24.6123;stroke-dashoffset:19.6898;fill-opacity:1"
+       id="path846"
+       sodipodi:type="arc"
+       sodipodi:cx="105.74687"
+       sodipodi:cy="135.0751"
+       sodipodi:rx="52.873436"
+       sodipodi:ry="52.873436"
+       sodipodi:start="6.263306"
+       sodipodi:end="6.2628173"
+       sodipodi:arc-type="slice"
+       d="m 158.60986,134.02409 a 52.873436,52.873436 0 0 1 -51.80551,53.91387 52.873436,52.873436 0 0 1 -53.920209,-51.79892 52.873436,52.873436 0 0 1 51.792339,-53.926536 52.873436,52.873436 0 0 1 53.93286,51.785746 l -52.86247,1.07685 z" />
+  </g>`)
+  marker.move(30, 30)
+  svg.add(marker)
+  /*
+  const el = document.getElementById('leafmap')
+  console.log('Leaflet', el, L)
+  const map = L.map(el).fitWorld()
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map)
+  map._controlContainer.querySelector('.leaflet-control-attribution').innerHTML = '🏴‍☠️ undefined' // merge conflict resolved
+  lMap = map
+  // L.marker([56.6681, 12.8831], { }).addTo(map)
+  */
+}
+
+/** @type {() => [Promise, (value: any) => void, (error: Error) => void]} */
+function unpromise () {
+  let set, abort
+  return [
+    new Promise((resolve, reject) => { set = resolve; abort = reject }),
+    set,
+    abort
+  ]
 }
 
 function emoOf (sex, age = 1) {
@@ -196,7 +266,7 @@ function emoOf (sex, age = 1) {
   ][age][sex]
 }
 
-function mkPopaganda (pk) {
+function mkPOPaganda (pk) {
   let ft = 'Banner'
   let emo = 'Lizard Emoji'
   let at = 'lvl24'
@@ -263,7 +333,7 @@ async function shareDecode (ev) {
  * Attaches listeners to elements when document
  * has finished loading.
  */
-function boot () {
+async function boot () {
   console.log('initializing...')
   elForm = document.getElementById('constraints')
   elForm.onsubmit = generate
@@ -287,7 +357,8 @@ function boot () {
       else player.pause()
     })
 
-  document.getElementById('text-share').value = mkPopaganda()
+  document.getElementById('text-share').value = mkPOPaganda()
+  await initMap()
   initPool()
 }
 document.addEventListener('DOMContentLoaded', boot)
