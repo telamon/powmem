@@ -1,11 +1,11 @@
 import { test } from 'tapzero'
-import { schnorr } from '@noble/curves/secp256k1'
 import {
   decodeASL,
   packGeo,
   roll,
   unpackGeo,
-  flagOf
+  flagOf,
+  getPublicKey
 } from './index.js'
 import Geohash from 'latlon-geohash'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 test('Decode ASL', async t => {
   const secret = '9ec11fa81c53e7115b014a373a4b66172e4f476091a57b20be1103e935738f9c'
   const pkHex = 'b618af96fde8ba61d43dde06583e7a897256c10c1d11c4b32dc15b76726593e6'
-  const pk = schnorr.getPublicKey(secret)
+  const pk = getPublicKey(secret)
   t.equal(Buffer.from(pk).hexSlice(), pkHex)
   const { age, sex, location } = decodeASL(pk)
   t.equal(age, 2)
@@ -24,7 +24,7 @@ test('Decode ASL', async t => {
 test.skip('Encode ASL', async t => {
   const secret = roll(2, 1, 'u6282sv')
   t.ok(secret)
-  const { age, sex, location } = decodeASL(schnorr.getPublicKey(secret))
+  const { age, sex, location } = decodeASL(getPublicKey(secret))
   t.equal(age, 2)
   t.equal(sex, 1)
   t.equal(location, 'u62')

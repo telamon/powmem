@@ -22,10 +22,10 @@
     "prepublishOnly": "npm test && npm run build"
   },
   "peerDependencies": {
-    "@noble/curves": "^1.0.0"
+    "@noble/secp256k1": "^2.0.0"
   },
   "devDependencies": {
-    "@noble/curves": "^1.0.0",
+    "@noble/secp256k1": "^2.0.0",
     "esbuild": "^0.17.19",
     "latlon-geohash": "^2.0.0",
     "nostr-tools": "^1.10.1",

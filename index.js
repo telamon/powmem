@@ -1,5 +1,7 @@
-import { schnorr } from '@noble/curves/secp256k1'
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
+/*! powmem - MIT License (c) 2023 Tony Ivanov */
+import { getPublicKey as getPublicKey33, etc } from '@noble/secp256k1'
+const { bytesToHex, hexToBytes } = etc
+export const getPublicKey = (...a) => getPublicKey33(...a).slice(1)
 
 /** @typedef {0|1} bit */
 /** @typedef {string} hexstring */
@@ -32,9 +34,10 @@ export function roll (age, sex, location, geobits = SANE_DEFAULT, maxTries = 500
     : 0xff
   // console.info('Searching for', nbits, binstr(prefix), 'mask', mask.toString(2))
   const nBytes = prefix.length
+  const sk = new Uint8Array(32)
   for (let i = 0; i < maxTries; i++) {
-    const sk = schnorr.utils.randomPrivateKey()
-    const pk = schnorr.getPublicKey(sk)
+    globalThis.crypto.getRandomValues(sk)
+    const pk = getPublicKey(sk)
     let v = true
     for (let n = 0; v && n < nBytes; n++) {
       v = (n + 1 === nBytes)
