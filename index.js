@@ -97,7 +97,7 @@ export function unpackGeo (buf, nBits = SANE_DEFAULT) {
  *  'u120fw' <-- contains 30bits accurate to ~1.2 Kilometers
  *  References:
  *  Format specification:  https://en.m.wikipedia.org/wiki/Geohash
- *  Bitdepthchart: https://www.ibm.com/docs/en/streams/4.3.0?topic=334-geoh
+ *  Bitdepthchart: https://www.ibm.com/docs/en/streams/4.3.0?topic=334-geohashes
       //         q1    q2    q3   18 19
       // HASH  01101 11111 11000 001|00 00010
       // LON   0 1 1  1 1  1 0 0  0 |0  0 0 0
